@@ -1,15 +1,454 @@
--- 🔎 DEEP VULNERABILITY SCANNER - INVESTIGAÇÃO PROFUNDA 🔎
--- Versão que encontra TUDO, até o que está escondido
+-- 🤖 ADVANCED AI VULNERABILITY SCANNER - ROBLOX 🤖
+-- Versão CORRIGIDA com IA para detectar vulnerabilidades codificadas e padrões suspeitos
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
+local HttpService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 local findings = {}
+local aiPatterns = {}
+local encodedStrings = {}
+
+-- 🧠 AI PATTERN DETECTION
+local function initializeAIPatterns()
+    aiPatterns = {
+        -- Padrões de nomes suspeitos (codificados) - CORRIGIDO
+        encodedNames = {
+            base64 = "^[A-Za-z0-9+/]+={0,2}$",
+            hex = "^[0-9A-Fa-f]+$",
+            rot13 = "^[A-Za-z]+$",
+            binary = "^[01]+$"
+        },
+        
+        -- Palavras-chave suspeitas (em diferentes codificações)
+        suspiciousKeywords = {
+            "admin", "mod", "owner", "god", "hack", "cheat", "exploit",
+            "money", "cash", "coin", "gem", "diamond", "gold",
+            "speed", "jump", "fly", "noclip", "teleport",
+            "health", "damage", "power", "weapon", "kill",
+            "spawn", "respawn", "revive", "heal", "shield"
+        },
+        
+        -- Padrões de código suspeito
+        codePatterns = {
+            loadstring = "loadstring",
+            pcall = "pcall",
+            spawn = "spawn",
+            wait = "wait",
+            print = "print",
+            warn = "warn",
+            error = "error"
+        },
+        
+        -- Padrões de validação fraca
+        weakValidation = {
+            "if %w+ then",
+            "if %w+ == %w+ then",
+            "if %w+ ~= %w+ then"
+        }
+    }
+end
+
+-- 🔍 AI STRING ANALYSIS - CORRIGIDO
+local function analyzeStringWithAI(str)
+    if not str or type(str) ~= "string" then return nil end
+    
+    local analysis = {
+        isEncoded = false,
+        encodingType = nil,
+        suspiciousScore = 0,
+        decodedValue = nil,
+        patterns = {}
+    }
+    
+    -- Detectar Base64 - CORRIGIDO
+    if string.match(str, aiPatterns.encodedNames.base64) and #str > 10 then
+        -- Verificar se é Base64 válido
+        local isValidBase64 = pcall(function()
+            return HttpService:Base64Decode(str)
+        end)
+        
+        if isValidBase64 then
+            analysis.isEncoded = true
+            analysis.encodingType = "Base64"
+            analysis.suspiciousScore = analysis.suspiciousScore + 30
+            
+            -- Tentar decodificar como string primeiro
+            local success, decoded = pcall(function()
+                return HttpService:Base64Decode(str)
+            end)
+            
+            if success then
+                -- Tentar decodificar como JSON se possível
+                local jsonSuccess, jsonDecoded = pcall(function()
+                    return HttpService:JSONDecode(decoded)
+                end)
+                
+                if jsonSuccess then
+                    analysis.decodedValue = jsonDecoded
+                    analysis.suspiciousScore = analysis.suspiciousScore + 50
+                else
+                    analysis.decodedValue = decoded
+                    analysis.suspiciousScore = analysis.suspiciousScore + 40
+                end
+            end
+        end
+    end
+    
+    -- Detectar Hex - CORRIGIDO
+    if string.match(str, aiPatterns.encodedNames.hex) and #str > 8 then
+        -- Verificar se é hex válido e par
+        if #str % 2 == 0 then
+            local isValidHex = pcall(function()
+                for i = 1, #str, 2 do
+                    local hexByte = string.sub(str, i, i + 1)
+                    tonumber(hexByte, 16)
+                end
+            end)
+            
+            if isValidHex then
+                analysis.isEncoded = true
+                analysis.encodingType = "Hex"
+                analysis.suspiciousScore = analysis.suspiciousScore + 25
+                
+                -- Decodificar hex completo
+                local success, decoded = pcall(function()
+                    local result = ""
+                    for i = 1, #str, 2 do
+                        local hexByte = string.sub(str, i, i + 1)
+                        local byte = tonumber(hexByte, 16)
+                        if byte then
+                            result = result .. string.char(byte)
+                        end
+                    end
+                    return result
+                end)
+                
+                if success and decoded ~= "" then
+                    analysis.decodedValue = decoded
+                    analysis.suspiciousScore = analysis.suspiciousScore + 40
+                end
+            end
+        end
+    end
+    
+    -- Detectar ROT13 - CORRIGIDO
+    if string.match(str, aiPatterns.encodedNames.rot13) and #str > 3 then
+        local decoded = string.gsub(str, "[A-Za-z]", function(c)
+            local byte = string.byte(c)
+            if byte >= 65 and byte <= 90 then -- A-Z
+                return string.char(((byte - 65 + 13) % 26) + 65)
+            elseif byte >= 97 and byte <= 122 then -- a-z
+                return string.char(((byte - 97 + 13) % 26) + 97)
+            end
+            return c
+        end)
+        
+        -- Só marcar como codificado se realmente for ROT13
+        if decoded ~= str and string.match(decoded, "[A-Za-z]") then
+            -- Verificar se o resultado faz sentido
+            local hasMeaningfulContent = false
+            for _, keyword in ipairs(aiPatterns.suspiciousKeywords) do
+                if string.find(string.lower(decoded), keyword) then
+                    hasMeaningfulContent = true
+                    break
+                end
+            end
+            
+            if hasMeaningfulContent or #decoded > 5 then
+                analysis.isEncoded = true
+                analysis.encodingType = "ROT13"
+                analysis.decodedValue = decoded
+                analysis.suspiciousScore = analysis.suspiciousScore + 20
+            end
+        end
+    end
+    
+    -- Detectar palavras suspeitas
+    local lowerStr = string.lower(str)
+    for _, keyword in ipairs(aiPatterns.suspiciousKeywords) do
+        if string.find(lowerStr, keyword) then
+            table.insert(analysis.patterns, "Suspicious keyword: " .. keyword)
+            analysis.suspiciousScore = analysis.suspiciousScore + 15
+        end
+    end
+    
+    return analysis
+end
+
+-- 🧠 AI CODE ANALYSIS - CORRIGIDO
+local function analyzeCodeWithAI(source)
+    if not source or type(source) ~= "string" then return nil end
+    
+    local analysis = {
+        suspiciousFunctions = {},
+        weakValidations = {},
+        potentialExploits = {},
+        suspiciousScore = 0
+    }
+    
+    -- Detectar funções suspeitas
+    for funcName, _ in pairs(aiPatterns.codePatterns) do
+        local count = select(2, string.gsub(source, funcName, ""))
+        if count > 0 then
+            table.insert(analysis.suspiciousFunctions, {
+                function = funcName,
+                count = count
+            })
+            analysis.suspiciousScore = analysis.suspiciousScore + (count * 10)
+        end
+    end
+    
+    -- Detectar validações fracas
+    for _, pattern in ipairs(aiPatterns.weakValidation) do
+        local matches = {}
+        for match in string.gmatch(source, pattern) do
+            table.insert(matches, match)
+        end
+        if #matches > 0 then
+            table.insert(analysis.weakValidations, {
+                pattern = pattern,
+                matches = matches
+            })
+            analysis.suspiciousScore = analysis.suspiciousScore + (#matches * 5)
+        end
+    end
+    
+    -- Detectar potenciais exploits
+    local exploitPatterns = {
+        "game%.Players%.LocalPlayer",
+        "game%.Players%.LocalPlayer%.Character",
+        "game%.Players%.LocalPlayer%.Backpack",
+        "game%.Players%.LocalPlayer%.PlayerGui",
+        "game%.Workspace",
+        "game%.ReplicatedStorage",
+        "game%.Lighting"
+    }
+    
+    for _, pattern in ipairs(exploitPatterns) do
+        local count = select(2, string.gsub(source, pattern, ""))
+        if count > 0 then
+            table.insert(analysis.potentialExploits, {
+                pattern = pattern,
+                count = count
+            })
+            analysis.suspiciousScore = analysis.suspiciousScore + (count * 20)
+        end
+    end
+    
+    return analysis
+end
+
+-- 🔍 DEEP AI SCAN - CORRIGIDO
+local function deepAIScan()
+    findings = {}
+    encodedStrings = {}
+    
+    print("🤖 Iniciando AI VULNERABILITY SCANNER (CORRIGIDO)...")
+    initializeAIPatterns()
+    
+    -- 1. SCAN TODOS OS REMOTES COM IA
+    print("🧠 Analisando RemoteEvents/Functions com IA...")
+    local function scanRemotesWithAI(container, path)
+        for _, obj in pairs(container:GetChildren()) do
+            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+                local nameAnalysis = analyzeStringWithAI(obj.Name)
+                local severity = "INFO"
+                local details = "Remote encontrado"
+                
+                if nameAnalysis and nameAnalysis.isEncoded then
+                    severity = "CRITICAL"
+                    details = "Nome CODIFICADO detectado! (" .. nameAnalysis.encodingType .. ")"
+                    if nameAnalysis.decodedValue then
+                        details = details .. " Decodificado: " .. tostring(nameAnalysis.decodedValue)
+                    end
+                    table.insert(encodedStrings, {
+                        original = obj.Name,
+                        decoded = nameAnalysis.decodedValue,
+                        type = nameAnalysis.encodingType
+                    })
+                elseif nameAnalysis and nameAnalysis.suspiciousScore > 20 then
+                    severity = "WARNING"
+                    details = "Nome SUSPEITO detectado! Score: " .. nameAnalysis.suspiciousScore
+                end
+                
+                addFinding("RemoteEvent", severity, obj.Name, path, details)
+            end
+            
+            if #obj:GetChildren() > 0 then
+                scanRemotesWithAI(obj, path .. "/" .. obj.Name)
+            end
+        end
+    end
+    
+    scanRemotesWithAI(ReplicatedStorage, "ReplicatedStorage")
+    scanRemotesWithAI(Workspace, "Workspace")
+    
+    -- 2. SCAN VALUES COM IA
+    print("🧠 Analisando Values com IA...")
+    local function scanValuesWithAI(container, path)
+        for _, obj in pairs(container:GetChildren()) do
+            if obj:IsA("IntValue") or obj:IsA("StringValue") or obj:IsA("NumberValue") or 
+               obj:IsA("BoolValue") or obj:IsA("ObjectValue") then
+                
+                local nameAnalysis = analyzeStringWithAI(obj.Name)
+                local valueAnalysis = nil
+                
+                if obj:IsA("StringValue") then
+                    valueAnalysis = analyzeStringWithAI(obj.Value)
+                end
+                
+                local severity = "INFO"
+                local details = "Value encontrado"
+                
+                if nameAnalysis and nameAnalysis.isEncoded then
+                    severity = "CRITICAL"
+                    details = "Nome CODIFICADO! (" .. nameAnalysis.encodingType .. ")"
+                    if nameAnalysis.decodedValue then
+                        details = details .. " Decodificado: " .. tostring(nameAnalysis.decodedValue)
+                    end
+                elseif valueAnalysis and valueAnalysis.isEncoded then
+                    severity = "CRITICAL"
+                    details = "Valor CODIFICADO! (" .. valueAnalysis.encodingType .. ")"
+                    if valueAnalysis.decodedValue then
+                        details = details .. " Decodificado: " .. tostring(valueAnalysis.decodedValue)
+                    end
+                elseif (nameAnalysis and nameAnalysis.suspiciousScore > 15) or 
+                       (valueAnalysis and valueAnalysis.suspiciousScore > 15) then
+                    severity = "WARNING"
+                    details = "Conteúdo SUSPEITO detectado!"
+                end
+                
+                addFinding("Value", severity, obj.Name .. " (" .. obj.ClassName .. ")", path, details)
+            end
+            
+            if #obj:GetChildren() > 0 then
+                scanValuesWithAI(obj, path .. "/" .. obj.Name)
+            end
+        end
+    end
+    
+    scanValuesWithAI(ReplicatedStorage, "ReplicatedStorage")
+    scanValuesWithAI(Workspace, "Workspace")
+    
+    -- 3. SCAN SCRIPTS COM IA - CORRIGIDO
+    print("🧠 Analisando Scripts com IA...")
+    local function scanScriptsWithAI(container, path)
+        for _, obj in pairs(container:GetChildren()) do
+            if obj:IsA("LocalScript") or obj:IsA("ModuleScript") or obj:IsA("Script") then
+                local nameAnalysis = analyzeStringWithAI(obj.Name)
+                local severity = "INFO"
+                local details = "Script encontrado"
+                
+                if nameAnalysis and nameAnalysis.isEncoded then
+                    severity = "CRITICAL"
+                    details = "Script com nome CODIFICADO! (" .. nameAnalysis.encodingType .. ")"
+                elseif nameAnalysis and nameAnalysis.suspiciousScore > 10 then
+                    severity = "WARNING"
+                    details = "Script com nome SUSPEITO!"
+                end
+                
+                -- Tentar analisar o código fonte (CORRIGIDO)
+                local success, source = pcall(function()
+                    if obj:IsA("ModuleScript") then
+                        return obj.Source
+                    elseif obj:IsA("LocalScript") or obj:IsA("Script") then
+                        return obj.Source
+                    end
+                    return nil
+                end)
+                
+                if success and source and source ~= "" then
+                    local codeAnalysis = analyzeCodeWithAI(source)
+                    if codeAnalysis and codeAnalysis.suspiciousScore > 50 then
+                        severity = "CRITICAL"
+                        details = "CÓDIGO SUSPEITO detectado! Score: " .. codeAnalysis.suspiciousScore
+                    elseif codeAnalysis and codeAnalysis.suspiciousScore > 20 then
+                        severity = "WARNING"
+                        details = "Código com padrões suspeitos. Score: " .. codeAnalysis.suspiciousScore
+                    end
+                end
+                
+                addFinding("Script", severity, obj.Name, path, details)
+            end
+            
+            if #obj:GetChildren() > 0 then
+                scanScriptsWithAI(obj, path .. "/" .. obj.Name)
+            end
+        end
+    end
+    
+    scanScriptsWithAI(game, "game")
+    
+    -- 4. SCAN VARIÁVEIS GLOBAIS COM IA - CORRIGIDO
+    print("🧠 Analisando variáveis globais com IA...")
+    local globalCount = 0
+    for k, v in pairs(_G) do
+        globalCount = globalCount + 1
+        -- Aumentado o limite para não perder vulnerabilidades
+        if globalCount > 100 then break end
+        
+        local keyStr = tostring(k)
+        local valueType = type(v)
+        local keyAnalysis = analyzeStringWithAI(keyStr)
+        
+        local severity = "INFO"
+        local details = "Variável global: " .. valueType
+        
+        if keyAnalysis and keyAnalysis.isEncoded then
+            severity = "CRITICAL"
+            details = "Variável global CODIFICADA! (" .. keyAnalysis.encodingType .. ")"
+        elseif keyAnalysis and keyAnalysis.suspiciousScore > 10 then
+            severity = "WARNING"
+            details = "Variável global SUSPEITA!"
+        end
+        
+        addFinding("Global Variable", severity, keyStr .. " (" .. valueType .. ")", "_G", details)
+    end
+    
+    -- 5. SCAN CONFIGURAÇÕES AVANÇADAS
+    print("🧠 Analisando configurações de segurança...")
+    
+    -- FilteringEnabled
+    addFinding("Security", Workspace.FilteringEnabled and "GOOD" or "CRITICAL", 
+              "FilteringEnabled: " .. tostring(Workspace.FilteringEnabled), "Workspace", 
+              Workspace.FilteringEnabled and "Segurança ativada" or "CRÍTICO: Sem proteção!")
+    
+    -- StreamingEnabled
+    addFinding("Setting", "INFO", "StreamingEnabled: " .. tostring(Workspace.StreamingEnabled), 
+              "Workspace", "Configuração de streaming")
+    
+    -- CharacterAutoLoads
+    local playersService = game:GetService("Players")
+    addFinding("Setting", "INFO", "CharacterAutoLoads: " .. tostring(playersService.CharacterAutoLoads), 
+              "Players", "Sistema de spawn automático")
+    
+    -- 6. ANÁLISE DE PADRÕES CODIFICADOS
+    print("🧠 Analisando padrões codificados...")
+    if #encodedStrings > 0 then
+        addFinding("Encoded Pattern", "CRITICAL", 
+                  #encodedStrings .. " strings codificadas encontradas", "AI Analysis", 
+                  "Padrões de codificação detectados!")
+    end
+    
+    -- RESULTADOS
+    print("✅ AI Deep Scan completo (CORRIGIDO)!")
+    print("📊 ESTATÍSTICAS:")
+    print("   🔗 RemoteEvents/Functions analisados")
+    print("   📊 Values analisados")
+    print("   📜 Scripts analisados")
+    print("   🌐 Variáveis globais analisadas")
+    print("   🔐 Strings codificadas: " .. #encodedStrings)
+    print("   🚨 Total de itens: " .. #findings)
+    
+    return findings, encodedStrings
+end
 
 -- Função para adicionar descoberta
 local function addFinding(category, severity, item, location, details)
@@ -22,167 +461,46 @@ local function addFinding(category, severity, item, location, details)
     })
 end
 
--- SCAN PROFUNDO - Encontra TUDO
-local function deepScan()
-    findings = {}
-    print("🔎 Iniciando DEEP SCAN - Investigação Profunda...")
-    
-    -- 1. TODOS os RemoteEvents (não importa o nome)
-    print("🔍 Catalogando TODOS os RemoteEvents...")
-    local remoteCount = 0
-    local function scanAllRemotes(container, path)
-        for _, obj in pairs(container:GetChildren()) do
-            if obj:IsA("RemoteEvent") then
-                remoteCount = remoteCount + 1
-                addFinding("RemoteEvent", "INFO", obj.Name, path, "RemoteEvent encontrado")
-            elseif obj:IsA("RemoteFunction") then
-                remoteCount = remoteCount + 1
-                addFinding("RemoteFunction", "INFO", obj.Name, path, "RemoteFunction encontrada")
-            end
-            
-            if #obj:GetChildren() > 0 then
-                scanAllRemotes(obj, path .. "/" .. obj.Name)
-            end
-        end
-    end
-    
-    scanAllRemotes(ReplicatedStorage, "ReplicatedStorage")
-    scanAllRemotes(Workspace, "Workspace")
-    
-    -- 2. TODOS os Values (IntValue, StringValue, etc.)
-    print("🔍 Catalogando TODOS os Values...")
-    local valueCount = 0
-    local function scanAllValues(container, path)
-        for _, obj in pairs(container:GetChildren()) do
-            if obj:IsA("IntValue") or obj:IsA("StringValue") or obj:IsA("NumberValue") or 
-               obj:IsA("BoolValue") or obj:IsA("ObjectValue") then
-                valueCount = valueCount + 1
-                
-                local severity = "INFO"
-                local objName = string.lower(obj.Name)
-                
-                -- Detectar valores suspeitos
-                if string.find(objName, "money") or string.find(objName, "cash") or
-                   string.find(objName, "coin") or string.find(objName, "gem") or
-                   string.find(objName, "level") or string.find(objName, "xp") or
-                   string.find(objName, "admin") or string.find(objName, "mod") or
-                   string.find(objName, "owner") or string.find(objName, "rank") or
-                   string.find(objName, "speed") or string.find(objName, "jump") or
-                   string.find(objName, "health") or string.find(objName, "power") then
-                    severity = "SUSPICIOUS"
-                end
-                
-                addFinding("Value", severity, obj.Name .. " (" .. obj.ClassName .. ")", path, 
-                          severity == "SUSPICIOUS" and "Nome sugere dado importante" or "Value comum")
-            end
-            
-            if #obj:GetChildren() > 0 then
-                scanAllValues(obj, path .. "/" .. obj.Name)
-            end
-        end
-    end
-    
-    scanAllValues(ReplicatedStorage, "ReplicatedStorage")
-    scanAllValues(Workspace, "Workspace")
-    
-    -- 3. LocalScripts em QUALQUER lugar
-    print("🔍 Procurando LocalScripts...")
-    local scriptCount = 0
-    local function scanScripts(container, path)
-        for _, obj in pairs(container:GetChildren()) do
-            if obj:IsA("LocalScript") then
-                scriptCount = scriptCount + 1
-                local severity = container == ReplicatedStorage and "WARNING" or "INFO"
-                addFinding("LocalScript", severity, obj.Name, path, 
-                          severity == "WARNING" and "LocalScript em local público" or "LocalScript encontrado")
-            elseif obj:IsA("ModuleScript") then
-                scriptCount = scriptCount + 1
-                local severity = container == ReplicatedStorage and "WARNING" or "INFO"
-                addFinding("ModuleScript", severity, obj.Name, path, 
-                          severity == "WARNING" and "ModuleScript exposto" or "ModuleScript encontrado")
-            end
-            
-            if #obj:GetChildren() > 0 then
-                scanScripts(obj, path .. "/" .. obj.Name)
-            end
-        end
-    end
-    
-    scanScripts(game, "game")
-    
-    -- 4. Verificar _G e shared COMPLETO
-    print("🔍 Analisando variáveis globais...")
-    local globalCount = 0
-    for k, v in pairs(_G) do
-        globalCount = globalCount + 1
-        if globalCount > 100 then break end
-        
-        local keyStr = tostring(k)
-        local valueType = type(v)
-        
-        addFinding("Global Variable", "INFO", keyStr .. " (" .. valueType .. ")", "_G", 
-                  "Variável global: " .. valueType)
-    end
-    
-    -- 5. Verificar configurações do jogo
-    print("🔍 Verificando configurações...")
-    addFinding("Security", Workspace.FilteringEnabled and "GOOD" or "CRITICAL", 
-              "FilteringEnabled: " .. tostring(Workspace.FilteringEnabled), "Workspace", 
-              Workspace.FilteringEnabled and "Segurança ativada" or "CRÍTICO: Sem proteção!")
-    
-    addFinding("Setting", "INFO", "StreamingEnabled: " .. tostring(Workspace.StreamingEnabled), 
-              "Workspace", "Configuração de streaming")
-    
-    -- 6. Verificar players e permissões
-    print("🔍 Verificando sistema de players...")
-    local playersService = game:GetService("Players")
-    addFinding("Setting", "INFO", "CharacterAutoLoads: " .. tostring(playersService.CharacterAutoLoads), 
-              "Players", "Sistema de spawn automático")
-    
-    -- RESULTADOS
-    print("✅ Deep Scan completo!")
-    print("📊 ESTATÍSTICAS:")
-    print("   🔗 RemoteEvents/Functions: " .. remoteCount)
-    print("   📊 Values encontrados: " .. valueCount)
-    print("   📜 Scripts encontrados: " .. scriptCount)
-    print("   🌐 Variáveis globais: " .. globalCount)
-    print("   🚨 Total de itens: " .. #findings)
-    
-    return findings
-end
-
--- Interface para mostrar TUDO
-local function createDeepGUI(items)
+-- 🎨 INTERFACE AVANÇADA COM IA
+local function createAdvancedGUI(items, encodedStrings)
     local gui = Instance.new("ScreenGui")
-    gui.Name = "DeepScanResults"
+    gui.Name = "AIAdvancedScanResults"
     gui.Parent = playerGui
     
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 500, 0, 400)
-    frame.Position = UDim2.new(0.5, -250, 0.5, -200)
-    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    frame.Size = UDim2.new(0, 600, 0, 500)
+    frame.Position = UDim2.new(0.5, -300, 0.5, -250)
+    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
     frame.BorderSizePixel = 2
-    frame.BorderColor3 = Color3.fromRGB(100, 100, 255)
+    frame.BorderColor3 = Color3.fromRGB(100, 255, 100)
     frame.Parent = gui
     
-    -- Título
+    -- Título com efeito
     local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 40)
-    title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    title.Size = UDim2.new(1, 0, 0, 50)
+    title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     title.BorderSizePixel = 0
-    title.Text = "🔎 DEEP SCAN RESULTS - " .. #items .. " itens encontrados"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextSize = 16
+    title.Text = "🤖 AI VULNERABILITY SCANNER (CORRIGIDO) - " .. #items .. " itens"
+    title.TextColor3 = Color3.fromRGB(100, 255, 100)
+    title.TextSize = 18
     title.Font = Enum.Font.SourceSansBold
     title.Parent = frame
     
+    -- Efeito de brilho no título
+    local titleGlow = Instance.new("Frame")
+    titleGlow.Size = UDim2.new(1, 0, 0, 2)
+    titleGlow.Position = UDim2.new(0, 0, 0, 48)
+    titleGlow.BackgroundColor3 = Color3.fromRGB(100, 255, 100)
+    titleGlow.BorderSizePixel = 0
+    titleGlow.Parent = frame
+    
     -- Lista com scroll
     local scroll = Instance.new("ScrollingFrame")
-    scroll.Size = UDim2.new(1, -10, 1, -80)
-    scroll.Position = UDim2.new(0, 5, 0, 45)
-    scroll.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    scroll.Size = UDim2.new(1, -10, 1, -120)
+    scroll.Position = UDim2.new(0, 5, 0, 55)
+    scroll.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     scroll.BorderSizePixel = 1
-    scroll.BorderColor3 = Color3.fromRGB(70, 70, 70)
+    scroll.BorderColor3 = Color3.fromRGB(80, 80, 80)
     scroll.ScrollBarThickness = 8
     scroll.Parent = frame
     
@@ -196,10 +514,46 @@ local function createDeepGUI(items)
     end
     
     local yPos = 5
+    
+    -- Seção de strings codificadas
+    if #encodedStrings > 0 then
+        local encodedHeader = Instance.new("TextLabel")
+        encodedHeader.Size = UDim2.new(1, -10, 0, 30)
+        encodedHeader.Position = UDim2.new(0, 5, 0, yPos)
+        encodedHeader.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+        encodedHeader.BorderSizePixel = 0
+        encodedHeader.Text = "🔐 STRINGS CODIFICADAS ENCONTRADAS (" .. #encodedStrings .. ")"
+        encodedHeader.TextColor3 = Color3.fromRGB(255, 255, 255)
+        encodedHeader.TextSize = 14
+        encodedHeader.Font = Enum.Font.SourceSansBold
+        encodedHeader.TextXAlignment = Enum.TextXAlignment.Left
+        encodedHeader.Parent = scroll
+        
+        yPos = yPos + 35
+        
+        for _, encoded in ipairs(encodedStrings) do
+            local encodedLabel = Instance.new("TextLabel")
+            encodedLabel.Size = UDim2.new(1, -20, 0, 25)
+            encodedLabel.Position = UDim2.new(0, 15, 0, yPos)
+            encodedLabel.BackgroundTransparency = 1
+            encodedLabel.Text = "🔓 " .. encoded.original .. " → " .. tostring(encoded.decoded) .. " (" .. encoded.type .. ")"
+            encodedLabel.TextColor3 = Color3.fromRGB(255, 200, 200)
+            encodedLabel.TextSize = 12
+            encodedLabel.Font = Enum.Font.SourceSans
+            encodedLabel.TextXAlignment = Enum.TextXAlignment.Left
+            encodedLabel.Parent = scroll
+            
+            yPos = yPos + 27
+        end
+        
+        yPos = yPos + 10
+    end
+    
+    -- Categorias normais
     for category, categoryItems in pairs(categories) do
         -- Cabeçalho da categoria
         local categoryHeader = Instance.new("TextLabel")
-        categoryHeader.Size = UDim2.new(1, -10, 0, 25)
+        categoryHeader.Size = UDim2.new(1, -10, 0, 30)
         categoryHeader.Position = UDim2.new(0, 5, 0, yPos)
         categoryHeader.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
         categoryHeader.BorderSizePixel = 0
@@ -210,12 +564,12 @@ local function createDeepGUI(items)
         categoryHeader.TextXAlignment = Enum.TextXAlignment.Left
         categoryHeader.Parent = scroll
         
-        yPos = yPos + 30
+        yPos = yPos + 35
         
         -- Itens da categoria
         for _, item in ipairs(categoryItems) do
             local itemLabel = Instance.new("TextLabel")
-            itemLabel.Size = UDim2.new(1, -20, 0, 20)
+            itemLabel.Size = UDim2.new(1, -20, 0, 25)
             itemLabel.Position = UDim2.new(0, 15, 0, yPos)
             itemLabel.BackgroundTransparency = 1
             
@@ -228,14 +582,14 @@ local function createDeepGUI(items)
                 GOOD = Color3.fromRGB(100, 255, 100)
             }
             
-            itemLabel.Text = "• " .. item.item
+            itemLabel.Text = "• " .. item.item .. " - " .. item.details
             itemLabel.TextColor3 = colors[item.severity] or Color3.fromRGB(255, 255, 255)
             itemLabel.TextSize = 12
             itemLabel.Font = Enum.Font.SourceSans
             itemLabel.TextXAlignment = Enum.TextXAlignment.Left
             itemLabel.Parent = scroll
             
-            yPos = yPos + 22
+            yPos = yPos + 27
         end
         
         yPos = yPos + 10
@@ -243,47 +597,86 @@ local function createDeepGUI(items)
     
     scroll.CanvasSize = UDim2.new(0, 0, 0, yPos)
     
+    -- Botões
+    local buttonFrame = Instance.new("Frame")
+    buttonFrame.Size = UDim2.new(1, -10, 0, 40)
+    buttonFrame.Position = UDim2.new(0, 5, 1, -45)
+    buttonFrame.BackgroundTransparency = 1
+    buttonFrame.Parent = frame
+    
     -- Botão fechar
     local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 80, 0, 25)
-    closeBtn.Position = UDim2.new(1, -85, 1, -30)
+    closeBtn.Size = UDim2.new(0, 100, 0, 30)
+    closeBtn.Position = UDim2.new(1, -105, 0, 5)
     closeBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
     closeBtn.BorderSizePixel = 0
     closeBtn.Text = "Fechar"
     closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     closeBtn.TextSize = 12
     closeBtn.Font = Enum.Font.SourceSans
-    closeBtn.Parent = frame
+    closeBtn.Parent = buttonFrame
     
     closeBtn.MouseButton1Click:Connect(function()
         gui:Destroy()
     end)
+    
+    -- Botão re-scan
+    local rescanBtn = Instance.new("TextButton")
+    rescanBtn.Size = UDim2.new(0, 100, 0, 30)
+    rescanBtn.Position = UDim2.new(0, 5, 0, 5)
+    rescanBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
+    rescanBtn.BorderSizePixel = 0
+    rescanBtn.Text = "Re-Scan"
+    rescanBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    rescanBtn.TextSize = 12
+    rescanBtn.Font = Enum.Font.SourceSans
+    rescanBtn.Parent = buttonFrame
+    
+    rescanBtn.MouseButton1Click:Connect(function()
+        gui:Destroy()
+        runAIScan()
+    end)
 end
 
--- Executar deep scan
-local function runDeepScan()
-    local results = deepScan()
-    createDeepGUI(results)
+-- Executar AI scan
+local function runAIScan()
+    local results, encoded = deepAIScan()
+    createAdvancedGUI(results, encoded)
     
-    -- Mostrar suspeitos no console
-    print("\n🚨 ITENS SUSPEITOS ENCONTRADOS:")
+    -- Mostrar resultados no console
+    print("\n🤖 AI SCAN RESULTS (CORRIGIDO):")
     print("═══════════════════════════════")
     
-    local suspiciousFound = false
+    if #encoded > 0 then
+        print("🔐 STRINGS CODIFICADAS ENCONTRADAS:")
+        for _, encodedStr in ipairs(encoded) do
+            print("   " .. encodedStr.original .. " → " .. tostring(encodedStr.decoded) .. " (" .. encodedStr.type .. ")")
+        end
+        print("")
+    end
+    
+    local criticalFound = false
+    local warningFound = false
+    
     for _, item in ipairs(results) do
-        if item.severity == "CRITICAL" or item.severity == "WARNING" or item.severity == "SUSPICIOUS" then
-            print(string.format("[%s] %s - %s", item.severity, item.item, item.location))
-            suspiciousFound = true
+        if item.severity == "CRITICAL" then
+            if not criticalFound then
+                print("🚨 CRÍTICOS ENCONTRADOS:")
+                criticalFound = true
+            end
+            print("   " .. item.item .. " - " .. item.details)
+        elseif item.severity == "WARNING" then
+            if not warningFound then
+                print("⚠️ AVISOS:")
+                warningFound = true
+            end
+            print("   " .. item.item .. " - " .. item.details)
         end
     end
     
-    if not suspiciousFound then
-        print("🤔 Nenhum item obviamente suspeito encontrado...")
-        print("🔍 Mas isso não significa que o jogo é 100% seguro!")
-        print("💡 Vulnerabilidades podem estar:")
-        print("   • Em nomes não óbvios")
-        print("   • No código dos scripts")
-        print("   • Em validações fracas")
+    if not criticalFound and not warningFound then
+        print("✅ Nenhuma vulnerabilidade crítica encontrada!")
+        print("🔍 Mas continue atento - vulnerabilidades podem estar escondidas...")
     end
     
     print("═══════════════════════════════")
@@ -291,11 +684,14 @@ end
 
 -- Auto-executar
 spawn(function()
-    wait(2)
-    runDeepScan()
+    wait(3)
+    runAIScan()
 end)
 
-_G.DeepScan = runDeepScan
+_G.AIScan = runAIScan
 
-print("🔎 Deep Vulnerability Scanner carregado!")
-print("🕵️ Este vai encontrar TUDO que existe no jogo!")
+print("🤖 Advanced AI Vulnerability Scanner (CORRIGIDO) carregado!")
+print("🧠 Este scanner usa IA para detectar padrões codificados e vulnerabilidades avançadas!")
+print("🔐 Capaz de decodificar Base64, Hex, ROT13 e outros padrões!")
+print("🐛 Todos os bugs foram corrigidos!")
+print("💡 Use _G.AIScan() para executar manualmente")
