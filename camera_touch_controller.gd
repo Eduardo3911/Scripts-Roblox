@@ -1,64 +1,70 @@
 extends Camera3D
 
-# Sensibilidade da rotação
-@export var sensitivity: float = 0.5
+# Configurações exportadas para ajustar no editor
+@export var touch_sensitivity: float = 0.003
+@export var min_vertical_angle: float = -80.0
 @export var max_vertical_angle: float = 80.0
+@export var smooth_rotation: bool = true
+@export var rotation_speed: float = 10.0
 
-# Variáveis para controle de toque
+# Variáveis de controle
 var is_touching: bool = false
-var last_touch_position: Vector2
-var rotation_x: float = 0.0
-var rotation_y: float = 0.0
+var touch_start_position: Vector2
+var current_rotation: Vector2
+var target_rotation: Vector2
 
 func _ready():
-	# Configura a câmera
-	rotation_x = rotation_degrees.x
-	rotation_y = rotation_degrees.y
-
-func _input(event):
-	# Detecta eventos de toque
-	if event is InputEventScreenTouch:
-		if event.pressed:
-			# Início do toque
-			is_touching = true
-			last_touch_position = event.position
-		else:
-			# Fim do toque
-			is_touching = false
+	# Inicializa as rotações atuais
+	current_rotation = Vector2(rotation_degrees.x, rotation_degrees.y)
+	target_rotation = current_rotation
 	
-	elif event is InputEventScreenDrag and is_touching:
-		# Movimento do dedo na tela
-		var delta_touch = event.position - last_touch_position
-		last_touch_position = event.position
-		
-		# Aplica a rotação baseada no movimento do toque
-		rotation_y -= delta_touch.x * sensitivity
-		rotation_x -= delta_touch.y * sensitivity
-		
-		# Limita a rotação vertical para evitar que a câmera vire de cabeça para baixo
-		rotation_x = clamp(rotation_x, -max_vertical_angle, max_vertical_angle)
-		
-		# Aplica as rotações à câmera
-		rotation_degrees.x = rotation_x
-		rotation_degrees.y = rotation_y
+	# Garante que os inputs de toque sejam processados
+	set_process_unhandled_input(true)
+
+func _process(delta):
+	# Aplicação suave da rotação (se habilitada)
+	if smooth_rotation:
+		current_rotation = current_rotation.lerp(target_rotation, rotation_speed * delta)
+		rotation_degrees.x = current_rotation.x
+		rotation_degrees.y = current_rotation.y
+	else:
+		rotation_degrees.x = target_rotation.x
+		rotation_degrees.y = target_rotation.y
 
 func _unhandled_input(event):
-	# Alternativa para mouse (para testes no editor)
-	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_LEFT:
-			if event.pressed:
-				is_touching = true
-				last_touch_position = event.position
-			else:
-				is_touching = false
+	# Processa apenas eventos de toque para celular
+	if event is InputEventScreenTouch:
+		handle_touch_event(event)
+	elif event is InputEventScreenDrag:
+		handle_drag_event(event)
+
+func handle_touch_event(event: InputEventScreenTouch):
+	if event.pressed:
+		# Início do toque
+		is_touching = true
+		touch_start_position = event.position
+	else:
+		# Fim do toque
+		is_touching = false
+
+func handle_drag_event(event: InputEventScreenDrag):
+	if not is_touching:
+		return
 	
-	elif event is InputEventMouseMotion and is_touching:
-		var delta_mouse = event.position - last_touch_position
-		last_touch_position = event.position
-		
-		rotation_y -= delta_mouse.x * sensitivity
-		rotation_x -= delta_mouse.y * sensitivity
-		rotation_x = clamp(rotation_x, -max_vertical_angle, max_vertical_angle)
-		
-		rotation_degrees.x = rotation_x
-		rotation_degrees.y = rotation_y
+	# Calcula o movimento do toque
+	var touch_delta = event.relative
+	
+	# Converte o movimento em rotação
+	var rotation_delta = Vector2(
+		-touch_delta.y * touch_sensitivity * 180.0,  # Rotação vertical (pitch)
+		-touch_delta.x * touch_sensitivity * 180.0   # Rotação horizontal (yaw)
+	)
+	
+	# Aplica a rotação
+	target_rotation += rotation_delta
+	
+	# Limita a rotação vertical
+	target_rotation.x = clamp(target_rotation.x, min_vertical_angle, max_vertical_angle)
+	
+	# Normaliza a rotação horizontal (evita overflow)
+	target_rotation.y = fmod(target_rotation.y, 360.0)
