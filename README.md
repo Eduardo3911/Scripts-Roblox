@@ -1,29 +1,23 @@
--- 🛡️ VULNERABILITY SCANNER - DETECTOR DE FALHAS 🛡️
--- Script para identificar vulnerabilidades em jogos do Roblox
--- Criado para fins educacionais e de segurança
+-- 🛡️ VULNERABILITY SCANNER V2 - FOCO NAS CRÍTICAS 🛡️
+-- Versão melhorada para focar no que realmente importa
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
-local ServerScriptService = game:GetService("ServerScriptService")
-local StarterPlayerScripts = game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- ==================== SISTEMA DE DETECÇÃO ====================
-
 local VulnerabilityScanner = {}
 local vulnerabilities = {}
-local scanResults = {}
 
--- Função para adicionar vulnerabilidade encontrada
+-- Função para adicionar vulnerabilidade
 local function addVulnerability(category, severity, description, location, details)
     table.insert(vulnerabilities, {
         category = category,
-        severity = severity, -- LOW, MEDIUM, HIGH, CRITICAL
+        severity = severity,
         description = description,
         location = location,
         details = details or "",
@@ -31,418 +25,234 @@ local function addVulnerability(category, severity, description, location, detai
     })
 end
 
--- ==================== DETECTORES DE VULNERABILIDADES ====================
-
--- 1. Verificar RemoteEvents/RemoteFunctions expostos
-function VulnerabilityScanner.scanRemoteEvents()
-    print("🔍 Escaneando RemoteEvents e RemoteFunctions...")
+-- SCAN FOCADO - Apenas as vulnerabilidades REALMENTE importantes
+function VulnerabilityScanner.runCriticalScan()
+    print("🚨 Iniciando scan CRÍTICO (apenas vulnerabilidades importantes)...")
     
-    local function scanContainer(container, path)
-        for _, obj in pairs(container:GetChildren()) do
-            if obj:IsA("RemoteEvent") then
-                addVulnerability(
-                    "Remote Events",
-                    "HIGH",
-                    "RemoteEvent exposto encontrado: " .. obj.Name,
-                    path .. "/" .. obj.Name,
-                    "Pode ser explorado para executar ações não autorizadas"
-                )
-            elseif obj:IsA("RemoteFunction") then
-                addVulnerability(
-                    "Remote Functions",
-                    "HIGH",
-                    "RemoteFunction exposta encontrada: " .. obj.Name,
-                    path .. "/" .. obj.Name,
-                    "Pode ser explorada para obter informações sensíveis"
-                )
-            end
-            
-            if #obj:GetChildren() > 0 then
-                scanContainer(obj, path .. "/" .. obj.Name)
-            end
-        end
-    end
+    vulnerabilities = {}
     
-    scanContainer(ReplicatedStorage, "ReplicatedStorage")
-    scanContainer(Workspace, "Workspace")
-end
-
--- 2. Verificar BindableEvents/BindableFunctions
-function VulnerabilityScanner.scanBindables()
-    print("🔍 Escaneando BindableEvents e BindableFunctions...")
-    
-    local function findBindables(container, path)
-        for _, obj in pairs(container:GetChildren()) do
-            if obj:IsA("BindableEvent") then
-                addVulnerability(
-                    "Bindable Events",
-                    "MEDIUM",
-                    "BindableEvent encontrado: " .. obj.Name,
-                    path .. "/" .. obj.Name,
-                    "Pode ser usado para interferir em sistemas internos"
-                )
-            elseif obj:IsA("BindableFunction") then
-                addVulnerability(
-                    "Bindable Functions",
-                    "MEDIUM",
-                    "BindableFunction encontrada: " .. obj.Name,
-                    path .. "/" .. obj.Name,
-                    "Pode expor lógica interna do jogo"
-                )
-            end
-            
-            if #obj:GetChildren() > 0 then
-                findBindables(obj, path .. "/" .. obj.Name)
-            end
-        end
-    end
-    
-    findBindables(ReplicatedStorage, "ReplicatedStorage")
-    findBindables(Workspace, "Workspace")
-end
-
--- 3. Verificar _G e shared globals
-function VulnerabilityScanner.scanGlobalVariables()
-    print("🔍 Escaneando variáveis globais...")
-    
-    -- Verificar _G
-    for key, value in pairs(_G) do
-        if type(value) == "function" then
-            addVulnerability(
-                "Global Variables",
-                "MEDIUM",
-                "Função global exposta em _G: " .. tostring(key),
-                "_G." .. tostring(key),
-                "Função pode ser chamada por exploits"
-            )
-        elseif type(value) == "table" then
-            addVulnerability(
-                "Global Variables",
-                "LOW",
-                "Tabela global em _G: " .. tostring(key),
-                "_G." .. tostring(key),
-                "Dados podem ser acessados/modificados"
-            )
-        end
-    end
-    
-    -- Verificar shared
-    for key, value in pairs(shared) do
-        addVulnerability(
-            "Shared Variables",
-            "MEDIUM",
-            "Variável shared exposta: " .. tostring(key),
-            "shared." .. tostring(key),
-            "Pode ser acessada por qualquer script"
-        )
-    end
-end
-
--- 4. Verificar LocalScripts em locais perigosos
-function VulnerabilityScanner.scanLocalScripts()
-    print("🔍 Escaneando LocalScripts em locais vulneráveis...")
-    
-    local function scanForLocalScripts(container, path)
-        for _, obj in pairs(container:GetChildren()) do
-            if obj:IsA("LocalScript") then
-                local severity = "LOW"
-                if container == ReplicatedStorage then
-                    severity = "HIGH"
-                elseif container == Workspace then
-                    severity = "MEDIUM"
-                end
-                
-                addVulnerability(
-                    "LocalScript Placement",
-                    severity,
-                    "LocalScript em local vulnerável: " .. obj.Name,
-                    path .. "/" .. obj.Name,
-                    "LocalScript pode ser lido/modificado por exploits"
-                )
-            end
-            
-            if #obj:GetChildren() > 0 then
-                scanForLocalScripts(obj, path .. "/" .. obj.Name)
-            end
-        end
-    end
-    
-    scanForLocalScripts(ReplicatedStorage, "ReplicatedStorage")
-    scanForLocalScripts(Workspace, "Workspace")
-end
-
--- 5. Verificar ModuleScripts expostos
-function VulnerabilityScanner.scanModuleScripts()
-    print("🔍 Escaneando ModuleScripts expostos...")
-    
-    local function scanModules(container, path)
-        for _, obj in pairs(container:GetChildren()) do
-            if obj:IsA("ModuleScript") then
-                local severity = "MEDIUM"
-                if container == ReplicatedStorage then
-                    severity = "HIGH"
-                end
-                
-                addVulnerability(
-                    "Module Scripts",
-                    severity,
-                    "ModuleScript exposto: " .. obj.Name,
-                    path .. "/" .. obj.Name,
-                    "Código pode ser lido e lógica pode ser comprometida"
-                )
-            end
-            
-            if #obj:GetChildren() > 0 then
-                scanModules(obj, path .. "/" .. obj.Name)
-            end
-        end
-    end
-    
-    scanModules(ReplicatedStorage, "ReplicatedStorage")
-    scanModules(Workspace, "Workspace")
-end
-
--- 6. Verificar valores importantes expostos
-function VulnerabilityScanner.scanExposedValues()
-    print("🔍 Escaneando valores expostos...")
-    
-    local dangerousTypes = {
-        "IntValue", "StringValue", "BoolValue", "NumberValue",
-        "Vector3Value", "CFrameValue", "ObjectValue"
-    }
-    
-    local function scanValues(container, path)
-        for _, obj in pairs(container:GetChildren()) do
-            for _, valueType in pairs(dangerousTypes) do
-                if obj:IsA(valueType) then
-                    local severity = "LOW"
-                    if string.find(string.lower(obj.Name), "admin") or 
-                       string.find(string.lower(obj.Name), "owner") or
-                       string.find(string.lower(obj.Name), "mod") or
-                       string.find(string.lower(obj.Name), "money") or
-                       string.find(string.lower(obj.Name), "cash") or
-                       string.find(string.lower(obj.Name), "level") then
-                        severity = "HIGH"
-                    end
-                    
-                    addVulnerability(
-                        "Exposed Values",
-                        severity,
-                        valueType .. " exposto: " .. obj.Name,
-                        path .. "/" .. obj.Name,
-                        "Valor pode ser modificado por exploits"
-                    )
-                end
-            end
-            
-            if #obj:GetChildren() > 0 then
-                scanValues(obj, path .. "/" .. obj.Name)
-            end
-        end
-    end
-    
-    scanValues(ReplicatedStorage, "ReplicatedStorage")
-    scanValues(Workspace, "Workspace")
-end
-
--- 7. Verificar configurações de segurança
-function VulnerabilityScanner.scanSecuritySettings()
-    print("🔍 Verificando configurações de segurança...")
-    
-    -- Verificar FilteringEnabled (sempre deve estar ativo)
+    -- 1. VERIFICAR FILTERING ENABLED (MAIS IMPORTANTE!)
+    print("🔍 Verificando FilteringEnabled...")
     if not Workspace.FilteringEnabled then
         addVulnerability(
             "Security Settings",
             "CRITICAL",
-            "FilteringEnabled está DESATIVADO!",
+            "🚨 FilteringEnabled está DESATIVADO!",
             "Workspace.FilteringEnabled",
-            "CRÍTICO: Exploits podem modificar qualquer coisa!"
+            "EXTREMAMENTE PERIGOSO: Exploits podem fazer qualquer coisa!"
         )
+    else
+        print("✅ FilteringEnabled está ATIVO (bom!)")
     end
     
-    -- Verificar se há proteção contra exploits conhecidos
-    if not game:GetService("Players").CharacterAutoLoads then
-        addVulnerability(
-            "Security Settings",
-            "LOW",
-            "CharacterAutoLoads desativado",
-            "Players.CharacterAutoLoads",
-            "Pode indicar sistema customizado, verificar implementação"
-        )
-    end
-end
-
--- 8. Verificar estrutura de pastas suspeitas
-function VulnerabilityScanner.scanSuspiciousFolders()
-    print("🔍 Procurando estruturas suspeitas...")
-    
-    local suspiciousNames = {
-        "admin", "owner", "mod", "vip", "admin commands", "commands",
-        "exploit", "hack", "cheat", "bypass", "fe", "filtering"
+    -- 2. REMOTE EVENTS PERIGOSOS (apenas com nomes suspeitos)
+    print("🔍 Procurando RemoteEvents perigosos...")
+    local dangerousRemoteNames = {
+        "admin", "ban", "kick", "give", "money", "cash", "teleport",
+        "kill", "god", "fly", "speed", "jump", "owner", "mod"
     }
     
-    local function scanFolders(container, path)
+    local function scanDangerousRemotes(container, path)
         for _, obj in pairs(container:GetChildren()) do
-            for _, suspName in pairs(suspiciousNames) do
-                if string.find(string.lower(obj.Name), suspName) then
+            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+                for _, dangerousName in pairs(dangerousRemoteNames) do
+                    if string.find(string.lower(obj.Name), dangerousName) then
+                        addVulnerability(
+                            "Dangerous Remotes",
+                            "HIGH",
+                            "🚨 RemoteEvent perigoso: " .. obj.Name,
+                            path .. "/" .. obj.Name,
+                            "Nome sugere funcionalidade de admin/hack"
+                        )
+                    end
+                end
+            end
+            
+            if #obj:GetChildren() > 0 then
+                scanDangerousRemotes(obj, path .. "/" .. obj.Name)
+            end
+        end
+    end
+    
+    scanDangerousRemotes(ReplicatedStorage, "ReplicatedStorage")
+    
+    -- 3. VALORES SENSÍVEIS (apenas os realmente perigosos)
+    print("🔍 Procurando valores sensíveis...")
+    local function scanSensitiveValues(container, path)
+        for _, obj in pairs(container:GetChildren()) do
+            if obj:IsA("IntValue") or obj:IsA("StringValue") or obj:IsA("NumberValue") then
+                local objName = string.lower(obj.Name)
+                if string.find(objName, "admin") or 
+                   string.find(objName, "owner") or
+                   string.find(objName, "money") or
+                   string.find(objName, "cash") or
+                   string.find(objName, "level") or
+                   string.find(objName, "rank") or
+                   string.find(objName, "god") or
+                   string.find(objName, "mod") then
                     addVulnerability(
-                        "Suspicious Structure",
-                        "MEDIUM",
-                        "Pasta/objeto suspeito encontrado: " .. obj.Name,
+                        "Sensitive Values",
+                        "HIGH",
+                        "💰 Valor sensível exposto: " .. obj.Name,
                         path .. "/" .. obj.Name,
-                        "Nome sugere funcionalidade sensível"
+                        "Pode ser modificado para dar vantagens"
                     )
                 end
             end
             
             if #obj:GetChildren() > 0 then
-                scanFolders(obj, path .. "/" .. obj.Name)
+                scanSensitiveValues(obj, path .. "/" .. obj.Name)
             end
         end
     end
     
-    scanFolders(game, "game")
-end
-
--- 9. Verificar eventos de mouse/teclado não protegidos
-function VulnerabilityScanner.scanInputVulnerabilities()
-    print("🔍 Verificando vulnerabilidades de input...")
+    scanSensitiveValues(ReplicatedStorage, "ReplicatedStorage")
     
-    local mouse = player:GetMouse()
-    
-    -- Verificar se há listeners de mouse perigosos
-    local connections = getconnections or false
-    if connections then
-        addVulnerability(
-            "Input Security",
-            "MEDIUM",
-            "Função getconnections disponível",
-            "Global Environment",
-            "Exploits podem interceptar eventos de input"
-        )
+    -- 4. GLOBALS PERIGOSOS
+    print("🔍 Verificando _G perigosos...")
+    for key, value in pairs(_G) do
+        local keyName = string.lower(tostring(key))
+        if string.find(keyName, "admin") or 
+           string.find(keyName, "hack") or
+           string.find(keyName, "exploit") or
+           string.find(keyName, "bypass") then
+            addVulnerability(
+                "Dangerous Globals",
+                "MEDIUM",
+                "🔓 Variável global suspeita: " .. tostring(key),
+                "_G." .. tostring(key),
+                "Nome sugere funcionalidade perigosa"
+            )
+        end
     end
+    
+    -- 5. CONTAR TODOS OS REMOTES (para estatística)
+    local totalRemotes = 0
+    local function countRemotes(container)
+        for _, obj in pairs(container:GetChildren()) do
+            if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+                totalRemotes = totalRemotes + 1
+            end
+            if #obj:GetChildren() > 0 then
+                countRemotes(obj)
+            end
+        end
+    end
+    
+    countRemotes(ReplicatedStorage)
+    
+    print("📊 Total de RemoteEvents/Functions encontrados: " .. totalRemotes)
+    print("⚠️ Vulnerabilidades CRÍTICAS encontradas: " .. #vulnerabilities)
+    
+    -- Mostrar interface
+    VulnerabilityScanner.createSimpleGUI()
+    
+    -- Relatório no console
+    print("\n🛡️ RELATÓRIO CRÍTICO:")
+    print("═══════════════════════════════════")
+    
+    if #vulnerabilities == 0 then
+        print("✅ PARABÉNS! Nenhuma vulnerabilidade crítica encontrada!")
+    else
+        for _, vuln in ipairs(vulnerabilities) do
+            print(string.format("[%s] %s", vuln.severity, vuln.description))
+        end
+    end
+    
+    print("═══════════════════════════════════")
 end
 
--- ==================== INTERFACE DE RESULTADOS ====================
-
-function VulnerabilityScanner.createResultsGUI()
-    -- Criar GUI principal
+-- Interface mais simples
+function VulnerabilityScanner.createSimpleGUI()
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "VulnerabilityScanner"
     screenGui.ResetOnSpawn = false
     screenGui.Parent = playerGui
     
-    -- Frame principal
     local mainFrame = Instance.new("Frame")
-    mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 600, 0, 500)
-    mainFrame.Position = UDim2.new(0.5, -300, 0.5, -250)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+    mainFrame.Size = UDim2.new(0, 500, 0, 400)
+    mainFrame.Position = UDim2.new(0.5, -250, 0.5, -200)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
     mainFrame.BorderSizePixel = 0
     mainFrame.Parent = screenGui
     
-    -- Borda
-    local border = Instance.new("UIStroke")
-    border.Color = Color3.fromRGB(255, 100, 100)
-    border.Thickness = 3
-    border.Parent = mainFrame
-    
-    -- Cantos arredondados
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 10)
     corner.Parent = mainFrame
     
-    -- Título
+    local border = Instance.new("UIStroke")
+    border.Color = #vulnerabilities > 0 and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 0)
+    border.Thickness = 3
+    border.Parent = mainFrame
+    
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, 0, 0, 50)
-    title.Position = UDim2.new(0, 0, 0, 0)
     title.BackgroundTransparency = 1
-    title.Text = "🛡️ VULNERABILITY SCANNER RESULTS 🛡️"
-    title.TextColor3 = Color3.fromRGB(255, 100, 100)
+    title.Text = "🛡️ VULNERABILITY SCAN RESULTS"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
     title.TextScaled = true
     title.Font = Enum.Font.CodeBold
     title.Parent = mainFrame
     
-    -- Estatísticas
-    local stats = Instance.new("TextLabel")
-    stats.Size = UDim2.new(1, 0, 0, 30)
-    stats.Position = UDim2.new(0, 0, 0, 50)
-    stats.BackgroundTransparency = 1
-    stats.Text = string.format("Total: %d vulnerabilidades encontradas", #vulnerabilities)
-    stats.TextColor3 = Color3.fromRGB(255, 255, 255)
-    stats.TextScaled = true
-    stats.Font = Enum.Font.Code
-    stats.Parent = mainFrame
+    local summary = Instance.new("TextLabel")
+    summary.Size = UDim2.new(1, 0, 0, 40)
+    summary.Position = UDim2.new(0, 0, 0, 50)
+    summary.BackgroundTransparency = 1
     
-    -- ScrollingFrame para resultados
+    if #vulnerabilities == 0 then
+        summary.Text = "✅ SEGURO: Nenhuma vulnerabilidade crítica!"
+        summary.TextColor3 = Color3.fromRGB(0, 255, 0)
+    else
+        summary.Text = string.format("⚠️ ENCONTRADAS: %d vulnerabilidades críticas", #vulnerabilities)
+        summary.TextColor3 = Color3.fromRGB(255, 100, 100)
+    end
+    
+    summary.TextScaled = true
+    summary.Font = Enum.Font.Code
+    summary.Parent = mainFrame
+    
+    -- Lista de vulnerabilidades
     local scrollFrame = Instance.new("ScrollingFrame")
-    scrollFrame.Size = UDim2.new(1, -20, 1, -100)
-    scrollFrame.Position = UDim2.new(0, 10, 0, 80)
-    scrollFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    scrollFrame.Size = UDim2.new(1, -20, 1, -120)
+    scrollFrame.Position = UDim2.new(0, 10, 0, 90)
+    scrollFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
     scrollFrame.BorderSizePixel = 0
-    scrollFrame.ScrollBarThickness = 10
+    scrollFrame.ScrollBarThickness = 8
     scrollFrame.Parent = mainFrame
     
     local scrollCorner = Instance.new("UICorner")
     scrollCorner.CornerRadius = UDim.new(0, 5)
     scrollCorner.Parent = scrollFrame
     
-    -- Layout para os resultados
     local listLayout = Instance.new("UIListLayout")
-    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
     listLayout.Padding = UDim.new(0, 5)
     listLayout.Parent = scrollFrame
     
-    -- Criar entradas para cada vulnerabilidade
     for i, vuln in ipairs(vulnerabilities) do
-        local vulnFrame = Instance.new("Frame")
-        vulnFrame.Size = UDim2.new(1, -10, 0, 80)
-        vulnFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+        local vulnFrame = Instance.new("TextLabel")
+        vulnFrame.Size = UDim2.new(1, -10, 0, 60)
+        vulnFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
         vulnFrame.BorderSizePixel = 0
-        vulnFrame.LayoutOrder = i
+        vulnFrame.Text = string.format("%s\n📍 %s", vuln.description, vuln.location)
+        vulnFrame.TextColor3 = Color3.fromRGB(255, 255, 255)
+        vulnFrame.TextWrapped = true
+        vulnFrame.TextXAlignment = Enum.TextXAlignment.Left
+        vulnFrame.Font = Enum.Font.Code
+        vulnFrame.TextSize = 12
         vulnFrame.Parent = scrollFrame
         
         local vulnCorner = Instance.new("UICorner")
         vulnCorner.CornerRadius = UDim.new(0, 3)
         vulnCorner.Parent = vulnFrame
-        
-        -- Cor baseada na severidade
-        local severityColors = {
-            LOW = Color3.fromRGB(100, 200, 100),
-            MEDIUM = Color3.fromRGB(255, 200, 100),
-            HIGH = Color3.fromRGB(255, 150, 100),
-            CRITICAL = Color3.fromRGB(255, 100, 100)
-        }
-        
-        local severityBorder = Instance.new("UIStroke")
-        severityBorder.Color = severityColors[vuln.severity] or Color3.fromRGB(255, 255, 255)
-        severityBorder.Thickness = 2
-        severityBorder.Parent = vulnFrame
-        
-        -- Texto da vulnerabilidade
-        local vulnText = Instance.new("TextLabel")
-        vulnText.Size = UDim2.new(1, -10, 1, 0)
-        vulnText.Position = UDim2.new(0, 5, 0, 0)
-        vulnText.BackgroundTransparency = 1
-        vulnText.Text = string.format("[%s] %s\n📍 %s\n💡 %s", 
-            vuln.severity, vuln.description, vuln.location, vuln.details)
-        vulnText.TextColor3 = Color3.fromRGB(255, 255, 255)
-        vulnText.TextXAlignment = Enum.TextXAlignment.Left
-        vulnText.TextYAlignment = Enum.TextYAlignment.Top
-        vulnText.TextWrapped = true
-        vulnText.Font = Enum.Font.Code
-        vulnText.TextSize = 12
-        vulnText.Parent = vulnFrame
     end
     
-    -- Atualizar tamanho do scroll
     scrollFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 10)
     
-    -- Botão para fechar
+    -- Botão fechar
     local closeButton = Instance.new("TextButton")
     closeButton.Size = UDim2.new(0, 30, 0, 30)
     closeButton.Position = UDim2.new(1, -35, 0, 5)
-    closeButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
+    closeButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
     closeButton.BorderSizePixel = 0
     closeButton.Text = "✕"
     closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -457,85 +267,16 @@ function VulnerabilityScanner.createResultsGUI()
     closeButton.MouseButton1Click:Connect(function()
         screenGui:Destroy()
     end)
-    
-    -- Tornar arrastável
-    local dragging = false
-    local dragStart = nil
-    local startPos = nil
-    
-    mainFrame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = mainFrame.Position
-        end
-    end)
-    
-    mainFrame.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local delta = input.Position - dragStart
-            mainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, 
-                                          startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-    
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
-    end)
 end
 
--- ==================== FUNÇÃO PRINCIPAL ====================
-
-function VulnerabilityScanner.runFullScan()
-    print("🚀 Iniciando scan completo de vulnerabilidades...")
-    
-    vulnerabilities = {} -- Limpar resultados anteriores
-    
-    -- Executar todos os scans
-    VulnerabilityScanner.scanRemoteEvents()
-    VulnerabilityScanner.scanBindables()
-    VulnerabilityScanner.scanGlobalVariables()
-    VulnerabilityScanner.scanLocalScripts()
-    VulnerabilityScanner.scanModuleScripts()
-    VulnerabilityScanner.scanExposedValues()
-    VulnerabilityScanner.scanSecuritySettings()
-    VulnerabilityScanner.scanSuspiciousFolders()
-    VulnerabilityScanner.scanInputVulnerabilities()
-    
-    print("✅ Scan completo! Encontradas " .. #vulnerabilities .. " vulnerabilidades.")
-    
-    -- Mostrar resultados
-    VulnerabilityScanner.createResultsGUI()
-    
-    -- Relatório no console
-    print("\n🛡️ RELATÓRIO DE VULNERABILIDADES:")
-    print("═══════════════════════════════════")
-    
-    local severityCount = {LOW = 0, MEDIUM = 0, HIGH = 0, CRITICAL = 0}
-    
-    for _, vuln in ipairs(vulnerabilities) do
-        severityCount[vuln.severity] = severityCount[vuln.severity] + 1
-        print(string.format("[%s] %s", vuln.severity, vuln.description))
-    end
-    
-    print("\n📊 RESUMO:")
-    print("CRÍTICAS: " .. severityCount.CRITICAL)
-    print("ALTAS: " .. severityCount.HIGH)
-    print("MÉDIAS: " .. severityCount.MEDIUM)
-    print("BAIXAS: " .. severityCount.LOW)
-    print("═══════════════════════════════════")
-end
-
--- Exportar para uso global
+-- Exportar
 _G.VulnerabilityScanner = VulnerabilityScanner
 
--- Auto-executar scan
+-- Auto-executar versão focada
 spawn(function()
-    wait(2) -- Aguardar carregamento completo
-    VulnerabilityScanner.runFullScan()
+    wait(2)
+    VulnerabilityScanner.runCriticalScan()
 end)
 
-print("🛡️ VULNERABILITY SCANNER CARREGADO!")
-print("💻 Use _G.VulnerabilityScanner.runFullScan() para executar manualmente")
+print("🛡️ VULNERABILITY SCANNER V2 CARREGADO!")
+print("🎯 Agora focando apenas nas vulnerabilidades REALMENTE importantes!")
