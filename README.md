@@ -1,42 +1,187 @@
--- Seção de strings codificadas
-    if #encodedStrings > 0 then
-        local encodedHeader = Instance.new("TextLabel")
-        encodedHeader.Size = UDim2.new(1, -10, 0, 30)
-        encodedHeader.Position = UDim2.new(0, 5, 0, yPos)
-        encodedHeader.BackgroundColor3 = Color3.fromRGB(255, 100, 100)
-        encodedHeader.BorderSizePixel = 0
-        encodedHeader.Text = "🔐 STRINGS CODIFICADAS ENCONTRADAS (" .. #encodedStrings .. ")"
-        encodedHeader.TextColor3 = Color3.fromRGB(255, 255, 255)
-        encodedHeader.TextSize = 14
-        encodedHeader.Font = Enum.Font.SourceSansBold
-        encodedHeader.TextXAlignment = Enum.TextXAlignment.Left
-        encodedHeader.Parent = scroll
-        
-        yPos = yPos + 35
-        
-        for _, encoded in ipairs(encodedStrings) do
-            local encodedLabel = Instance.new("TextLabel")
-            encodedLabel.Size = UDim2.new(1, -20, 0, 25)
-            encodedLabel.Position = UDim2.new(0, 15, 0, yPos)
-            encodedLabel.BackgroundTransparency = 1
-            encodedLabel.Text = "🔓 " .. encoded.original .. " → " .. tostring(encoded.decoded) .. " (" .. encoded.type .. ")"
-            encodedLabel.TextColor3 = Color3.fromRGB(255, 200, 200)
-            encodedLabel.TextSize = 12
-            encodedLabel.Font = Enum.Font.SourceSans
-            encodedLabel.TextXAlignment = Enum.TextXAlignment.Left
-            encodedLabel.Parent = scroll
+-- 🔍 SIMPLE VULNERABILITY SCANNER - ROBLOX 🔍
+-- Versão simplificada e testada
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+local findings = {}
+
+-- Função para adicionar descoberta
+local function addFinding(category, severity, item, location, details)
+    table.insert(findings, {
+        category = category,
+        severity = severity,
+        item = item,
+        location = location,
+        details = details
+    })
+end
+
+-- SCAN BÁSICO
+local function simpleScan()
+    findings = {}
+    
+    print("🔍 Iniciando Simple Vulnerability Scanner...")
+    
+    -- 1. SCAN REMOTES
+    print("🔍 Procurando RemoteEvents...")
+    local remoteCount = 0
+    local function scanRemotes(container, path)
+        for _, obj in pairs(container:GetChildren()) do
+            if obj:IsA("RemoteEvent") then
+                remoteCount = remoteCount + 1
+                addFinding("RemoteEvent", "INFO", obj.Name, path, "RemoteEvent encontrado")
+            elseif obj:IsA("RemoteFunction") then
+                remoteCount = remoteCount + 1
+                addFinding("RemoteFunction", "INFO", obj.Name, path, "RemoteFunction encontrada")
+            end
             
-            yPos = yPos + 27
+            if #obj:GetChildren() > 0 then
+                scanRemotes(obj, path .. "/" .. obj.Name)
+            end
         end
-        
-        yPos = yPos + 10
     end
     
-    -- Categorias normais
+    scanRemotes(ReplicatedStorage, "ReplicatedStorage")
+    scanRemotes(Workspace, "Workspace")
+    
+    -- 2. SCAN VALUES
+    print("🔍 Procurando Values...")
+    local valueCount = 0
+    local function scanValues(container, path)
+        for _, obj in pairs(container:GetChildren()) do
+            if obj:IsA("IntValue") or obj:IsA("StringValue") or obj:IsA("NumberValue") or 
+               obj:IsA("BoolValue") or obj:IsA("ObjectValue") then
+                valueCount = valueCount + 1
+                
+                local severity = "INFO"
+                local objName = string.lower(obj.Name)
+                
+                -- Detectar valores suspeitos
+                if string.find(objName, "money") or string.find(objName, "cash") or
+                   string.find(objName, "coin") or string.find(objName, "gem") or
+                   string.find(objName, "level") or string.find(objName, "xp") or
+                   string.find(objName, "admin") or string.find(objName, "mod") or
+                   string.find(objName, "owner") or string.find(objName, "rank") or
+                   string.find(objName, "speed") or string.find(objName, "jump") or
+                   string.find(objName, "health") or string.find(objName, "power") then
+                    severity = "WARNING"
+                end
+                
+                addFinding("Value", severity, obj.Name .. " (" .. obj.ClassName .. ")", path, 
+                          severity == "WARNING" and "Nome sugere dado importante" or "Value comum")
+            end
+            
+            if #obj:GetChildren() > 0 then
+                scanValues(obj, path .. "/" .. obj.Name)
+            end
+        end
+    end
+    
+    scanValues(ReplicatedStorage, "ReplicatedStorage")
+    scanValues(Workspace, "Workspace")
+    
+    -- 3. SCAN SCRIPTS
+    print("🔍 Procurando Scripts...")
+    local scriptCount = 0
+    local function scanScripts(container, path)
+        for _, obj in pairs(container:GetChildren()) do
+            if obj:IsA("LocalScript") then
+                scriptCount = scriptCount + 1
+                local severity = container == ReplicatedStorage and "WARNING" or "INFO"
+                addFinding("LocalScript", severity, obj.Name, path, 
+                          severity == "WARNING" and "LocalScript em local público" or "LocalScript encontrado")
+            elseif obj:IsA("ModuleScript") then
+                scriptCount = scriptCount + 1
+                local severity = container == ReplicatedStorage and "WARNING" or "INFO"
+                addFinding("ModuleScript", severity, obj.Name, path, 
+                          severity == "WARNING" and "ModuleScript exposto" or "ModuleScript encontrado")
+            elseif obj:IsA("Script") then
+                scriptCount = scriptCount + 1
+                addFinding("Script", "INFO", obj.Name, path, "Script encontrado")
+            end
+            
+            if #obj:GetChildren() > 0 then
+                scanScripts(obj, path .. "/" .. obj.Name)
+            end
+        end
+    end
+    
+    scanScripts(game, "game")
+    
+    -- 4. VERIFICAR CONFIGURAÇÕES
+    print("🔍 Verificando configurações...")
+    addFinding("Security", Workspace.FilteringEnabled and "GOOD" or "CRITICAL", 
+              "FilteringEnabled: " .. tostring(Workspace.FilteringEnabled), "Workspace", 
+              Workspace.FilteringEnabled and "Segurança ativada" or "CRÍTICO: Sem proteção!")
+    
+    addFinding("Setting", "INFO", "StreamingEnabled: " .. tostring(Workspace.StreamingEnabled), 
+              "Workspace", "Configuração de streaming")
+    
+    -- RESULTADOS
+    print("✅ Simple Scan completo!")
+    print("📊 ESTATÍSTICAS:")
+    print("   🔗 RemoteEvents/Functions: " .. remoteCount)
+    print("   📊 Values encontrados: " .. valueCount)
+    print("   📜 Scripts encontrados: " .. scriptCount)
+    print("   🚨 Total de itens: " .. #findings)
+    
+    return findings
+end
+
+-- INTERFACE SIMPLES
+local function createSimpleGUI(items)
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "SimpleScanResults"
+    gui.Parent = playerGui
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 400, 0, 300)
+    frame.Position = UDim2.new(0.5, -200, 0.5, -150)
+    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    frame.BorderSizePixel = 2
+    frame.BorderColor3 = Color3.fromRGB(100, 100, 255)
+    frame.Parent = gui
+    
+    -- Título
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 40)
+    title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    title.BorderSizePixel = 0
+    title.Text = "🔍 Simple Scanner - " .. #items .. " itens encontrados"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 16
+    title.Font = Enum.Font.SourceSansBold
+    title.Parent = frame
+    
+    -- Lista com scroll
+    local scroll = Instance.new("ScrollingFrame")
+    scroll.Size = UDim2.new(1, -10, 1, -80)
+    scroll.Position = UDim2.new(0, 5, 0, 45)
+    scroll.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    scroll.BorderSizePixel = 1
+    scroll.BorderColor3 = Color3.fromRGB(70, 70, 70)
+    scroll.ScrollBarThickness = 8
+    scroll.Parent = frame
+    
+    -- Categorizar itens
+    local categories = {}
+    for _, item in ipairs(items) do
+        if not categories[item.category] then
+            categories[item.category] = {}
+        end
+        table.insert(categories[item.category], item)
+    end
+    
+    local yPos = 5
     for category, categoryItems in pairs(categories) do
         -- Cabeçalho da categoria
         local categoryHeader = Instance.new("TextLabel")
-        categoryHeader.Size = UDim2.new(1, -10, 0, 30)
+        categoryHeader.Size = UDim2.new(1, -10, 0, 25)
         categoryHeader.Position = UDim2.new(0, 5, 0, yPos)
         categoryHeader.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
         categoryHeader.BorderSizePixel = 0
@@ -47,12 +192,12 @@
         categoryHeader.TextXAlignment = Enum.TextXAlignment.Left
         categoryHeader.Parent = scroll
         
-        yPos = yPos + 35
+        yPos = yPos + 30
         
         -- Itens da categoria
         for _, item in ipairs(categoryItems) do
             local itemLabel = Instance.new("TextLabel")
-            itemLabel.Size = UDim2.new(1, -20, 0, 25)
+            itemLabel.Size = UDim2.new(1, -20, 0, 20)
             itemLabel.Position = UDim2.new(0, 15, 0, yPos)
             itemLabel.BackgroundTransparency = 1
             
@@ -65,14 +210,14 @@
                 GOOD = Color3.fromRGB(100, 255, 100)
             }
             
-            itemLabel.Text = "• " .. item.item .. " - " .. item.details
+            itemLabel.Text = "• " .. item.item
             itemLabel.TextColor3 = colors[item.severity] or Color3.fromRGB(255, 255, 255)
             itemLabel.TextSize = 12
             itemLabel.Font = Enum.Font.SourceSans
             itemLabel.TextXAlignment = Enum.TextXAlignment.Left
             itemLabel.Parent = scroll
             
-            yPos = yPos + 27
+            yPos = yPos + 22
         end
         
         yPos = yPos + 10
@@ -80,63 +225,31 @@
     
     scroll.CanvasSize = UDim2.new(0, 0, 0, yPos)
     
-    -- Botões
-    local buttonFrame = Instance.new("Frame")
-    buttonFrame.Size = UDim2.new(1, -10, 0, 40)
-    buttonFrame.Position = UDim2.new(0, 5, 1, -45)
-    buttonFrame.BackgroundTransparency = 1
-    buttonFrame.Parent = frame
-    
     -- Botão fechar
     local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 100, 0, 30)
-    closeBtn.Position = UDim2.new(1, -105, 0, 5)
+    closeBtn.Size = UDim2.new(0, 80, 0, 25)
+    closeBtn.Position = UDim2.new(1, -85, 1, -30)
     closeBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
     closeBtn.BorderSizePixel = 0
     closeBtn.Text = "Fechar"
     closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     closeBtn.TextSize = 12
     closeBtn.Font = Enum.Font.SourceSans
-    closeBtn.Parent = buttonFrame
+    closeBtn.Parent = frame
     
     closeBtn.MouseButton1Click:Connect(function()
         gui:Destroy()
     end)
-    
-    -- Botão re-scan
-    local rescanBtn = Instance.new("TextButton")
-    rescanBtn.Size = UDim2.new(0, 100, 0, 30)
-    rescanBtn.Position = UDim2.new(0, 5, 0, 5)
-    rescanBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 0)
-    rescanBtn.BorderSizePixel = 0
-    rescanBtn.Text = "Re-Scan"
-    rescanBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    rescanBtn.TextSize = 12
-    rescanBtn.Font = Enum.Font.SourceSans
-    rescanBtn.Parent = buttonFrame
-    
-    rescanBtn.MouseButton1Click:Connect(function()
-        gui:Destroy()
-        runAIScan()
-    end)
 end
 
--- Executar AI scan
-local function runAIScan()
-    local results, encoded = deepAIScan()
-    createAdvancedGUI(results, encoded)
+-- Executar scan
+local function runSimpleScan()
+    local results = simpleScan()
+    createSimpleGUI(results)
     
-    -- Mostrar resultados no console
-    print("\n🤖 AI SCAN RESULTS (CORRIGIDO):")
+    -- Mostrar no console
+    print("\n🔍 SIMPLE SCAN RESULTS:")
     print("═══════════════════════════════")
-    
-    if #encoded > 0 then
-        print("🔐 STRINGS CODIFICADAS ENCONTRADAS:")
-        for _, encodedStr in ipairs(encoded) do
-            print("   " .. encodedStr.original .. " → " .. tostring(encodedStr.decoded) .. " (" .. encodedStr.type .. ")")
-        end
-        print("")
-    end
     
     local criticalFound = false
     local warningFound = false
@@ -159,7 +272,6 @@ local function runAIScan()
     
     if not criticalFound and not warningFound then
         print("✅ Nenhuma vulnerabilidade crítica encontrada!")
-        print("🔍 Mas continue atento - vulnerabilidades podem estar escondidas...")
     end
     
     print("═══════════════════════════════")
@@ -167,14 +279,11 @@ end
 
 -- Auto-executar
 spawn(function()
-    wait(3)
-    runAIScan()
+    wait(2)
+    runSimpleScan()
 end)
 
-_G.AIScan = runAIScan
+_G.SimpleScan = runSimpleScan
 
-print("🤖 Advanced AI Vulnerability Scanner (CORRIGIDO) carregado!")
-print("🧠 Este scanner usa IA para detectar padrões codificados e vulnerabilidades avançadas!")
-print("🔐 Capaz de decodificar Base64, Hex, ROT13 e outros padrões!")
-print("🐛 Todos os bugs foram corrigidos!")
-print("💡 Use _G.AIScan() para executar manualmente")
+print("🔍 Simple Vulnerability Scanner carregado!")
+print("💡 Use _G.SimpleScan() para executar manualmente")
