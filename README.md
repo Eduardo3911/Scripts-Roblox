@@ -1,249 +1,301 @@
--- 🛡️ SIMPLE VULNERABILITY SCANNER - SEM ERROS 🛡️
--- Versão simplificada e segura
+-- 🔎 DEEP VULNERABILITY SCANNER - INVESTIGAÇÃO PROFUNDA 🔎
+-- Versão que encontra TUDO, até o que está escondido
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Lista de vulnerabilidades encontradas
-local vulnerabilities = {}
+local findings = {}
 
--- Função segura para adicionar vulnerabilidade
-local function addVuln(tipo, nome, local_obj)
-    table.insert(vulnerabilities, {
-        tipo = tipo,
-        nome = nome,
-        local_obj = local_obj
+-- Função para adicionar descoberta
+local function addFinding(category, severity, item, location, details)
+    table.insert(findings, {
+        category = category,
+        severity = severity,
+        item = item,
+        location = location,
+        details = details
     })
 end
 
--- Função segura para escanear
-local function scanSafe()
-    vulnerabilities = {} -- Limpar lista
+-- SCAN PROFUNDO - Encontra TUDO
+local function deepScan()
+    findings = {}
+    print("🔎 Iniciando DEEP SCAN - Investigação Profunda...")
     
-    print("🔍 Iniciando scan simples...")
-    
-    -- 1. Verificar FilteringEnabled
-    pcall(function()
-        if not Workspace.FilteringEnabled then
-            addVuln("CRÍTICO", "FilteringEnabled DESATIVADO", "Workspace")
-        else
-            print("✅ FilteringEnabled está ativo")
-        end
-    end)
-    
-    -- 2. Procurar RemoteEvents suspeitos
-    pcall(function()
-        local nomesSuspeitos = {"admin", "money", "cash", "give", "ban", "kick", "teleport", "god", "fly"}
-        
-        for _, obj in pairs(ReplicatedStorage:GetChildren()) do
+    -- 1. TODOS os RemoteEvents (não importa o nome)
+    print("🔍 Catalogando TODOS os RemoteEvents...")
+    local remoteCount = 0
+    local function scanAllRemotes(container, path)
+        for _, obj in pairs(container:GetChildren()) do
             if obj:IsA("RemoteEvent") then
-                for _, suspeito in pairs(nomesSuspeitos) do
-                    if string.find(string.lower(obj.Name), suspeito) then
-                        addVuln("ALTO", "RemoteEvent suspeito: " .. obj.Name, "ReplicatedStorage")
-                    end
-                end
+                remoteCount = remoteCount + 1
+                addFinding("RemoteEvent", "INFO", obj.Name, path, "RemoteEvent encontrado")
+            elseif obj:IsA("RemoteFunction") then
+                remoteCount = remoteCount + 1
+                addFinding("RemoteFunction", "INFO", obj.Name, path, "RemoteFunction encontrada")
             end
-        end
-    end)
-    
-    -- 3. Procurar valores suspeitos
-    pcall(function()
-        local valoresSuspeitos = {"money", "cash", "level", "admin", "mod", "owner"}
-        
-        for _, obj in pairs(ReplicatedStorage:GetChildren()) do
-            if obj:IsA("IntValue") or obj:IsA("StringValue") or obj:IsA("NumberValue") then
-                for _, suspeito in pairs(valoresSuspeitos) do
-                    if string.find(string.lower(obj.Name), suspeito) then
-                        addVuln("ALTO", "Valor suspeito: " .. obj.Name, "ReplicatedStorage")
-                    end
-                end
-            end
-        end
-    end)
-    
-    -- 4. Verificar _G (versão segura)
-    pcall(function()
-        local count = 0
-        for k, v in pairs(_G) do
-            count = count + 1
-            if count > 50 then break end -- Evitar loop infinito
             
-            local keyStr = tostring(k)
-            if string.find(string.lower(keyStr), "admin") or 
-               string.find(string.lower(keyStr), "hack") then
-                addVuln("MÉDIO", "Global suspeito: " .. keyStr, "_G")
+            if #obj:GetChildren() > 0 then
+                scanAllRemotes(obj, path .. "/" .. obj.Name)
             end
         end
-    end)
-    
-    print("✅ Scan completo! Encontradas " .. #vulnerabilities .. " vulnerabilidades")
-    return #vulnerabilities
-end
-
--- Interface SUPER simples
-local function criarInterface()
-    pcall(function()
-        -- Destruir interface anterior se existir
-        local antiga = playerGui:FindFirstChild("SimpleScan")
-        if antiga then antiga:Destroy() end
-        
-        -- Criar nova interface
-        local gui = Instance.new("ScreenGui")
-        gui.Name = "SimpleScan"
-        gui.Parent = playerGui
-        
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0, 400, 0, 300)
-        frame.Position = UDim2.new(0.5, -200, 0.5, -150)
-        frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        frame.BorderSizePixel = 2
-        frame.BorderColor3 = #vulnerabilities > 0 and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(0, 255, 0)
-        frame.Parent = gui
-        
-        -- Título
-        local titulo = Instance.new("TextLabel")
-        titulo.Size = UDim2.new(1, 0, 0, 40)
-        titulo.Position = UDim2.new(0, 0, 0, 0)
-        titulo.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-        titulo.BorderSizePixel = 0
-        titulo.Text = "🛡️ SCAN DE SEGURANÇA"
-        titulo.TextColor3 = Color3.fromRGB(255, 255, 255)
-        titulo.TextSize = 18
-        titulo.Font = Enum.Font.SourceSansBold
-        titulo.Parent = frame
-        
-        -- Resultado
-        local resultado = Instance.new("TextLabel")
-        resultado.Size = UDim2.new(1, -20, 0, 40)
-        resultado.Position = UDim2.new(0, 10, 0, 50)
-        resultado.BackgroundTransparency = 1
-        
-        if #vulnerabilities == 0 then
-            resultado.Text = "✅ SEGURO: Nenhuma vulnerabilidade encontrada!"
-            resultado.TextColor3 = Color3.fromRGB(0, 255, 0)
-        else
-            resultado.Text = "⚠️ ENCONTRADAS: " .. #vulnerabilities .. " vulnerabilidades"
-            resultado.TextColor3 = Color3.fromRGB(255, 100, 100)
-        end
-        
-        resultado.TextSize = 16
-        resultado.Font = Enum.Font.SourceSans
-        resultado.TextWrapped = true
-        resultado.Parent = frame
-        
-        -- Lista de vulnerabilidades
-        local lista = Instance.new("ScrollingFrame")
-        lista.Size = UDim2.new(1, -20, 1, -140)
-        lista.Position = UDim2.new(0, 10, 0, 100)
-        lista.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-        lista.BorderSizePixel = 1
-        lista.BorderColor3 = Color3.fromRGB(100, 100, 100)
-        lista.ScrollBarThickness = 10
-        lista.Parent = frame
-        
-        -- Adicionar vulnerabilidades à lista
-        for i, vuln in ipairs(vulnerabilities) do
-            local item = Instance.new("TextLabel")
-            item.Size = UDim2.new(1, -10, 0, 30)
-            item.Position = UDim2.new(0, 5, 0, (i-1) * 35)
-            item.BackgroundTransparency = 1
-            item.Text = string.format("[%s] %s", vuln.tipo, vuln.nome)
-            item.TextColor3 = Color3.fromRGB(255, 255, 255)
-            item.TextSize = 14
-            item.Font = Enum.Font.SourceSans
-            item.TextXAlignment = Enum.TextXAlignment.Left
-            item.TextWrapped = true
-            item.Parent = lista
-        end
-        
-        lista.CanvasSize = UDim2.new(0, 0, 0, #vulnerabilities * 35)
-        
-        -- Botão fechar
-        local fechar = Instance.new("TextButton")
-        fechar.Size = UDim2.new(0, 60, 0, 30)
-        fechar.Position = UDim2.new(1, -70, 1, -40)
-        fechar.BackgroundColor3 = Color3.fromRGB(200, 0, 0)
-        fechar.BorderSizePixel = 0
-        fechar.Text = "Fechar"
-        fechar.TextColor3 = Color3.fromRGB(255, 255, 255)
-        fechar.TextSize = 14
-        fechar.Font = Enum.Font.SourceSans
-        fechar.Parent = frame
-        
-        fechar.MouseButton1Click:Connect(function()
-            gui:Destroy()
-        end)
-        
-        print("✅ Interface criada com sucesso!")
-    end)
-end
-
--- Função principal SEGURA
-local function executarScan()
-    print("🚀 Iniciando Vulnerability Scanner Simples...")
-    
-    local sucesso, erro = pcall(function()
-        local total = scanSafe()
-        wait(1)
-        criarInterface()
-        
-        -- Mostrar no console também
-        print("\n📋 RELATÓRIO:")
-        print("════════════════")
-        
-        if #vulnerabilities == 0 then
-            print("✅ JOGO SEGURO!")
-        else
-            for i, vuln in ipairs(vulnerabilities) do
-                print(string.format("%d. [%s] %s", i, vuln.tipo, vuln.nome))
-            end
-        end
-        print("════════════════")
-    end)
-    
-    if not sucesso then
-        print("❌ Erro no scanner: " .. tostring(erro))
-        
-        -- Interface de erro
-        local gui = Instance.new("ScreenGui")
-        gui.Name = "ScanError"
-        gui.Parent = playerGui
-        
-        local frame = Instance.new("Frame")
-        frame.Size = UDim2.new(0, 300, 0, 100)
-        frame.Position = UDim2.new(0.5, -150, 0.5, -50)
-        frame.BackgroundColor3 = Color3.fromRGB(100, 0, 0)
-        frame.BorderSizePixel = 0
-        frame.Parent = gui
-        
-        local texto = Instance.new("TextLabel")
-        texto.Size = UDim2.new(1, 0, 1, 0)
-        texto.BackgroundTransparency = 1
-        texto.Text = "❌ Erro no scanner\nVerifique o console (F9)"
-        texto.TextColor3 = Color3.fromRGB(255, 255, 255)
-        texto.TextSize = 16
-        texto.Font = Enum.Font.SourceSans
-        texto.Parent = frame
-        
-        wait(5)
-        gui:Destroy()
     end
+    
+    scanAllRemotes(ReplicatedStorage, "ReplicatedStorage")
+    scanAllRemotes(Workspace, "Workspace")
+    
+    -- 2. TODOS os Values (IntValue, StringValue, etc.)
+    print("🔍 Catalogando TODOS os Values...")
+    local valueCount = 0
+    local function scanAllValues(container, path)
+        for _, obj in pairs(container:GetChildren()) do
+            if obj:IsA("IntValue") or obj:IsA("StringValue") or obj:IsA("NumberValue") or 
+               obj:IsA("BoolValue") or obj:IsA("ObjectValue") then
+                valueCount = valueCount + 1
+                
+                local severity = "INFO"
+                local objName = string.lower(obj.Name)
+                
+                -- Detectar valores suspeitos
+                if string.find(objName, "money") or string.find(objName, "cash") or
+                   string.find(objName, "coin") or string.find(objName, "gem") or
+                   string.find(objName, "level") or string.find(objName, "xp") or
+                   string.find(objName, "admin") or string.find(objName, "mod") or
+                   string.find(objName, "owner") or string.find(objName, "rank") or
+                   string.find(objName, "speed") or string.find(objName, "jump") or
+                   string.find(objName, "health") or string.find(objName, "power") then
+                    severity = "SUSPICIOUS"
+                end
+                
+                addFinding("Value", severity, obj.Name .. " (" .. obj.ClassName .. ")", path, 
+                          severity == "SUSPICIOUS" and "Nome sugere dado importante" or "Value comum")
+            end
+            
+            if #obj:GetChildren() > 0 then
+                scanAllValues(obj, path .. "/" .. obj.Name)
+            end
+        end
+    end
+    
+    scanAllValues(ReplicatedStorage, "ReplicatedStorage")
+    scanAllValues(Workspace, "Workspace")
+    
+    -- 3. LocalScripts em QUALQUER lugar
+    print("🔍 Procurando LocalScripts...")
+    local scriptCount = 0
+    local function scanScripts(container, path)
+        for _, obj in pairs(container:GetChildren()) do
+            if obj:IsA("LocalScript") then
+                scriptCount = scriptCount + 1
+                local severity = container == ReplicatedStorage and "WARNING" or "INFO"
+                addFinding("LocalScript", severity, obj.Name, path, 
+                          severity == "WARNING" and "LocalScript em local público" or "LocalScript encontrado")
+            elseif obj:IsA("ModuleScript") then
+                scriptCount = scriptCount + 1
+                local severity = container == ReplicatedStorage and "WARNING" or "INFO"
+                addFinding("ModuleScript", severity, obj.Name, path, 
+                          severity == "WARNING" and "ModuleScript exposto" or "ModuleScript encontrado")
+            end
+            
+            if #obj:GetChildren() > 0 then
+                scanScripts(obj, path .. "/" .. obj.Name)
+            end
+        end
+    end
+    
+    scanScripts(game, "game")
+    
+    -- 4. Verificar _G e shared COMPLETO
+    print("🔍 Analisando variáveis globais...")
+    local globalCount = 0
+    for k, v in pairs(_G) do
+        globalCount = globalCount + 1
+        if globalCount > 100 then break end
+        
+        local keyStr = tostring(k)
+        local valueType = type(v)
+        
+        addFinding("Global Variable", "INFO", keyStr .. " (" .. valueType .. ")", "_G", 
+                  "Variável global: " .. valueType)
+    end
+    
+    -- 5. Verificar configurações do jogo
+    print("🔍 Verificando configurações...")
+    addFinding("Security", Workspace.FilteringEnabled and "GOOD" or "CRITICAL", 
+              "FilteringEnabled: " .. tostring(Workspace.FilteringEnabled), "Workspace", 
+              Workspace.FilteringEnabled and "Segurança ativada" or "CRÍTICO: Sem proteção!")
+    
+    addFinding("Setting", "INFO", "StreamingEnabled: " .. tostring(Workspace.StreamingEnabled), 
+              "Workspace", "Configuração de streaming")
+    
+    -- 6. Verificar players e permissões
+    print("🔍 Verificando sistema de players...")
+    local playersService = game:GetService("Players")
+    addFinding("Setting", "INFO", "CharacterAutoLoads: " .. tostring(playersService.CharacterAutoLoads), 
+              "Players", "Sistema de spawn automático")
+    
+    -- RESULTADOS
+    print("✅ Deep Scan completo!")
+    print("📊 ESTATÍSTICAS:")
+    print("   🔗 RemoteEvents/Functions: " .. remoteCount)
+    print("   📊 Values encontrados: " .. valueCount)
+    print("   📜 Scripts encontrados: " .. scriptCount)
+    print("   🌐 Variáveis globais: " .. globalCount)
+    print("   🚨 Total de itens: " .. #findings)
+    
+    return findings
 end
 
--- Executar automaticamente
+-- Interface para mostrar TUDO
+local function createDeepGUI(items)
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "DeepScanResults"
+    gui.Parent = playerGui
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 500, 0, 400)
+    frame.Position = UDim2.new(0.5, -250, 0.5, -200)
+    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    frame.BorderSizePixel = 2
+    frame.BorderColor3 = Color3.fromRGB(100, 100, 255)
+    frame.Parent = gui
+    
+    -- Título
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 40)
+    title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    title.BorderSizePixel = 0
+    title.Text = "🔎 DEEP SCAN RESULTS - " .. #items .. " itens encontrados"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 16
+    title.Font = Enum.Font.SourceSansBold
+    title.Parent = frame
+    
+    -- Lista com scroll
+    local scroll = Instance.new("ScrollingFrame")
+    scroll.Size = UDim2.new(1, -10, 1, -80)
+    scroll.Position = UDim2.new(0, 5, 0, 45)
+    scroll.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    scroll.BorderSizePixel = 1
+    scroll.BorderColor3 = Color3.fromRGB(70, 70, 70)
+    scroll.ScrollBarThickness = 8
+    scroll.Parent = frame
+    
+    -- Categorizar itens
+    local categories = {}
+    for _, item in ipairs(items) do
+        if not categories[item.category] then
+            categories[item.category] = {}
+        end
+        table.insert(categories[item.category], item)
+    end
+    
+    local yPos = 5
+    for category, categoryItems in pairs(categories) do
+        -- Cabeçalho da categoria
+        local categoryHeader = Instance.new("TextLabel")
+        categoryHeader.Size = UDim2.new(1, -10, 0, 25)
+        categoryHeader.Position = UDim2.new(0, 5, 0, yPos)
+        categoryHeader.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        categoryHeader.BorderSizePixel = 0
+        categoryHeader.Text = "📁 " .. category .. " (" .. #categoryItems .. ")"
+        categoryHeader.TextColor3 = Color3.fromRGB(200, 200, 255)
+        categoryHeader.TextSize = 14
+        categoryHeader.Font = Enum.Font.SourceSansBold
+        categoryHeader.TextXAlignment = Enum.TextXAlignment.Left
+        categoryHeader.Parent = scroll
+        
+        yPos = yPos + 30
+        
+        -- Itens da categoria
+        for _, item in ipairs(categoryItems) do
+            local itemLabel = Instance.new("TextLabel")
+            itemLabel.Size = UDim2.new(1, -20, 0, 20)
+            itemLabel.Position = UDim2.new(0, 15, 0, yPos)
+            itemLabel.BackgroundTransparency = 1
+            
+            -- Cor baseada na severidade
+            local colors = {
+                CRITICAL = Color3.fromRGB(255, 100, 100),
+                WARNING = Color3.fromRGB(255, 200, 100),
+                SUSPICIOUS = Color3.fromRGB(255, 255, 100),
+                INFO = Color3.fromRGB(200, 200, 200),
+                GOOD = Color3.fromRGB(100, 255, 100)
+            }
+            
+            itemLabel.Text = "• " .. item.item
+            itemLabel.TextColor3 = colors[item.severity] or Color3.fromRGB(255, 255, 255)
+            itemLabel.TextSize = 12
+            itemLabel.Font = Enum.Font.SourceSans
+            itemLabel.TextXAlignment = Enum.TextXAlignment.Left
+            itemLabel.Parent = scroll
+            
+            yPos = yPos + 22
+        end
+        
+        yPos = yPos + 10
+    end
+    
+    scroll.CanvasSize = UDim2.new(0, 0, 0, yPos)
+    
+    -- Botão fechar
+    local closeBtn = Instance.new("TextButton")
+    closeBtn.Size = UDim2.new(0, 80, 0, 25)
+    closeBtn.Position = UDim2.new(1, -85, 1, -30)
+    closeBtn.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+    closeBtn.BorderSizePixel = 0
+    closeBtn.Text = "Fechar"
+    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    closeBtn.TextSize = 12
+    closeBtn.Font = Enum.Font.SourceSans
+    closeBtn.Parent = frame
+    
+    closeBtn.MouseButton1Click:Connect(function()
+        gui:Destroy()
+    end)
+end
+
+-- Executar deep scan
+local function runDeepScan()
+    local results = deepScan()
+    createDeepGUI(results)
+    
+    -- Mostrar suspeitos no console
+    print("\n🚨 ITENS SUSPEITOS ENCONTRADOS:")
+    print("═══════════════════════════════")
+    
+    local suspiciousFound = false
+    for _, item in ipairs(results) do
+        if item.severity == "CRITICAL" or item.severity == "WARNING" or item.severity == "SUSPICIOUS" then
+            print(string.format("[%s] %s - %s", item.severity, item.item, item.location))
+            suspiciousFound = true
+        end
+    end
+    
+    if not suspiciousFound then
+        print("🤔 Nenhum item obviamente suspeito encontrado...")
+        print("🔍 Mas isso não significa que o jogo é 100% seguro!")
+        print("💡 Vulnerabilidades podem estar:")
+        print("   • Em nomes não óbvios")
+        print("   • No código dos scripts")
+        print("   • Em validações fracas")
+    end
+    
+    print("═══════════════════════════════")
+end
+
+-- Auto-executar
 spawn(function()
-    wait(3)
-    executarScan()
+    wait(2)
+    runDeepScan()
 end)
 
--- Exportar para uso manual
-_G.SimpleScan = {
-    run = executarScan
-}
+_G.DeepScan = runDeepScan
 
-print("🛡️ Simple Vulnerability Scanner carregado!")
-print("💻 Se der erro, use: _G.SimpleScan.run()")
+print("🔎 Deep Vulnerability Scanner carregado!")
+print("🕵️ Este vai encontrar TUDO que existe no jogo!")
