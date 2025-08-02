@@ -1,6 +1,6 @@
---[[
-    Trading System Exploit Tool (Agressivo)
-    Foco: Explorar remotes de troca expostos
+-[[
+    Universal Remote Exploit Tool
+    Foco: Explorar TODOS os remotes do jogo
     Versão: 1.0
 ]]
 
@@ -12,70 +12,75 @@ local function Log(msg, level)
     print(string.format("[%s] %s", level, msg))
 end
 
-local function aggressiveTradingExploit()
-    Log("=== EXPLOIT AGRESSIVO EM REMOTES DE TROCA ===", "EXPLOIT")
+local function universalRemoteExploit()
+    Log("=== EXPLOIT UNIVERSAL EM TODOS OS REMOTES ===", "EXPLOIT")
     
-    -- Lista de remotes comuns de troca
-    local tradingRemotes = {
-        "TradeItem", "TradeRequest", "AcceptTrade", "DeclineTrade",
-        "TradeAccept", "TradeDecline", "TradeConfirm", "TradeCancel",
-        "ExchangeItem", "TransferItem", "GiveItem", "ReceiveItem",
-        "BuyItem", "SellItem", "PurchaseItem", "SellRequest",
-        "BuyRequest", "PurchaseRequest", "TradeSystem", "TradingSystem"
-    }
+    local foundRemotes = 0
+    local successfulExploits = 0
     
-    for _, remoteName in pairs(tradingRemotes) do
-        local remote = game:FindFirstChild(remoteName, true)
-        if remote and (remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction")) then
-            Log("🎯 Remote de troca encontrado: " .. remote.Name, "EXPLOIT")
+    -- Procurar TODOS os remotes do jogo
+    for _, obj in pairs(game:GetDescendants()) do
+        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+            foundRemotes = foundRemotes + 1
+            Log("🎯 Remote encontrado: " .. obj.Name .. " (" .. obj.ClassName .. ")", "EXPLOIT")
             
-            -- Payloads agressivos para duplicação e bypass
-            local aggressivePayloads = {
-                -- Duplicação de itens
-                {LocalPlayer, "duplicate", math.huge},
-                {LocalPlayer, "copy", -999999},
-                {LocalPlayer, "clone", "admin"},
-                {LocalPlayer, "spawn", "infinite"},
-                {LocalPlayer, "create", "hack"},
-                {LocalPlayer, "generate", "exploit"},
-                
-                -- Bypass de validação
-                {"admin", math.huge, "bypass"},
-                {"hack", 999999, "cheat"},
-                {"exploit", 0, "god"},
-                {"bypass", -999999, "admin"},
-                
-                -- Argumentos inválidos
-                {nil, "test", "exploit"},
-                {math.huge, nil, "hack"},
-                {0, "admin", nil},
-                {nil, nil, nil},
+            -- Payloads universais
+            local universalPayloads = {
+                -- Valores extremos
+                {math.huge, "admin", "hack"},
+                {999999, "exploit", "bypass"},
+                {0, "duplicate", "spawn"},
+                {-999999, "cheat", "god"},
                 
                 -- Strings suspeitas
                 {"admin", "hack", "exploit"},
                 {"bypass", "cheat", "god"},
                 {"duplicate", "spawn", "infinite"},
-                {"copy", "clone", "create"}
+                {"copy", "clone", "create"},
+                
+                -- Argumentos com jogador
+                {LocalPlayer, math.huge, "admin"},
+                {LocalPlayer, 999999, "hack"},
+                {LocalPlayer, 0, "exploit"},
+                {LocalPlayer, -999999, "bypass"},
+                
+                -- Argumentos inválidos
+                {nil, "test", "exploit"},
+                {math.huge, nil, "hack"},
+                {0, "admin", nil},
+                {nil, nil, nil}
             }
             
-            for i, payload in pairs(aggressivePayloads) do
+            for i, payload in pairs(universalPayloads) do
                 local success = pcall(function()
-                    if remote:IsA("RemoteEvent") then
-                        remote:FireServer(unpack(payload))
-                    elseif remote:IsA("RemoteFunction") then
-                        remote:InvokeServer(unpack(payload))
+                    if obj:IsA("RemoteEvent") then
+                        obj:FireServer(unpack(payload))
+                    elseif obj:IsA("RemoteFunction") then
+                        obj:InvokeServer(unpack(payload))
                     end
                 end)
                 
                 if success then
-                    Log("✅ Payload " .. i .. " executado com sucesso em: " .. remote.Name, "EXPLOIT")
+                    successfulExploits = successfulExploits + 1
+                    Log("✅ Payload " .. i .. " executado em: " .. obj.Name, "EXPLOIT")
                 end
             end
         end
     end
+    
+    -- Relatório final
+    Log("=== RELATÓRIO FINAL ===", "REPORT")
+    Log("Total de remotes encontrados: " .. foundRemotes, "REPORT")
+    Log("Total de exploits bem-sucedidos: " .. successfulExploits, "REPORT")
+    
+    if successfulExploits > 0 then
+        Log("🚨 SISTEMA VULNERÁVEL: Exploits funcionaram!", "CRITICAL")
+    else
+        Log("✅ SISTEMA PROTEGIDO: Nenhum exploit funcionou", "SAFE")
+    end
 end
 
 -- MAIN
-Log("Trading System Exploit Tool (Agressivo) carregado!", "INFO")
-aggressiveTradingExploit()
-Log("Exploit agressivo finalizado! Veja o console para resultados.", "INFO")
+Log("Universal Remote Exploit Tool carregado!", "INFO")
+universalRemoteExploit()
+Log("Exploit universal finalizado!", "INFO")
