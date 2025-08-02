@@ -1,6 +1,3 @@
--- 🚀 ULTIMATE VULNERABILITY SCANNER - ROBLOX 🚀
--- Versão OTIMIZADA para Codex
-
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -9,55 +6,89 @@ local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
-local findings = {}
-local encodedStrings = {}
-local aiPatterns = {}
+local criticalFindings = {}
+local vulnerabilityPatterns = {}
+local exploitVectors = {}
 
--- 🧠 AI PATTERN DETECTION SYSTEM
-local function initializeAIPatterns()
-    aiPatterns = {
-        -- Padrões de codificação
-        encodings = {
+local function initializeCriticalPatterns()
+    vulnerabilityPatterns = {
+        criticalValues = {
+            "health", "hp", "life", "vida", "damage", "dano", "armor", "shield", "defense",
+            "money", "cash", "coins", "currency", "gold", "diamonds", "gems", "robux",
+            "level", "xp", "experience", "rank", "prestige", "skill", "power",
+            "speed", "jump", "walk", "run", "fly", "teleport", "noclip",
+            "admin", "mod", "owner", "god", "hack", "cheat", "exploit", "bypass",
+            "spawn", "respawn", "revive", "heal", "kill", "murder", "death",
+            "weapon", "gun", "sword", "knife", "bomb", "explosive", "ammo"
+        },
+        
+        encodingPatterns = {
             base64 = "^[A-Za-z0-9+/]+={0,2}$",
             hex = "^[0-9A-Fa-f]+$",
             rot13 = "^[A-Za-z]+$",
-            binary = "^[01]+$"
+            binary = "^[01]+$",
+            reversed = "^[A-Za-z0-9]+$"
         },
         
-        -- Palavras-chave críticas
-        criticalKeywords = {
-            "admin", "mod", "owner", "god", "hack", "cheat", "exploit", "bypass",
-            "money", "cash", "coin", "gem", "diamond", "gold", "currency",
-            "speed", "jump", "fly", "noclip", "teleport", "flyhack",
-            "health", "damage", "power", "weapon", "kill", "murder",
-            "spawn", "respawn", "revive", "heal", "shield", "armor",
-            "level", "xp", "experience", "rank", "premium", "vip",
-            "script", "execute", "run", "load", "inject", "injection"
+        exploitFunctions = {
+            "FireServer", "InvokeServer", "RemoteEvent", "RemoteFunction",
+            "SetPrimaryPartCFrame", "SetPrimaryPartCFrame", "CFrame",
+            "Humanoid", "Character", "Backpack", "PlayerGui",
+            "Instance.new", "GetService", "WaitForChild",
+            "loadstring", "pcall", "spawn", "coroutine"
         },
         
-        -- Padrões de código suspeito
-        suspiciousCode = {
-            "loadstring", "pcall", "spawn", "wait", "print", "warn", "error",
-            "game.Players.LocalPlayer", "game.Workspace", "game.ReplicatedStorage",
-            "Instance.new", "GetService", "FireServer", "InvokeServer"
+        weakValidationPatterns = {
+            "if %w+ then", "if %w+ == %w+ then", "if %w+ ~= %w+ then",
+            "if %w+ and %w+ then", "if %w+ or %w+ then",
+            "check", "validate", "verify", "confirm"
         }
     }
 end
 
--- 🔍 AI STRING ANALYSIS - VERSÃO OTIMIZADA
-local function analyzeStringWithAI(str)
+local function analyzeCriticalValue(str)
     if not str or type(str) ~= "string" then return nil end
     
     local analysis = {
+        isCritical = false,
         isEncoded = false,
         encodingType = nil,
-        suspiciousScore = 0,
         decodedValue = nil,
+        vulnerabilityScore = 0,
+        exploitPotential = 0,
+        criticalType = nil,
         patterns = {}
     }
     
-    -- Detectar Base64
-    if string.match(str, aiPatterns.encodings.base64) and #str > 8 then
+    local lowerStr = string.lower(str)
+    
+    for _, criticalValue in ipairs(vulnerabilityPatterns.criticalValues) do
+        if string.find(lowerStr, criticalValue) then
+            analysis.isCritical = true
+            analysis.vulnerabilityScore = analysis.vulnerabilityScore + 25
+            
+            if string.find(criticalValue, "health") or string.find(criticalValue, "hp") or string.find(criticalValue, "life") then
+                analysis.criticalType = "HEALTH"
+                analysis.exploitPotential = analysis.exploitPotential + 40
+            elseif string.find(criticalValue, "money") or string.find(criticalValue, "cash") or string.find(criticalValue, "coin") then
+                analysis.criticalType = "MONEY"
+                analysis.exploitPotential = analysis.exploitPotential + 50
+            elseif string.find(criticalValue, "admin") or string.find(criticalValue, "god") or string.find(criticalValue, "hack") then
+                analysis.criticalType = "ADMIN"
+                analysis.exploitPotential = analysis.exploitPotential + 60
+            elseif string.find(criticalValue, "speed") or string.find(criticalValue, "fly") or string.find(criticalValue, "teleport") then
+                analysis.criticalType = "MOVEMENT"
+                analysis.exploitPotential = analysis.exploitPotential + 35
+            elseif string.find(criticalValue, "weapon") or string.find(criticalValue, "gun") or string.find(criticalValue, "sword") then
+                analysis.criticalType = "WEAPON"
+                analysis.exploitPotential = analysis.exploitPotential + 45
+            end
+            
+            table.insert(analysis.patterns, "Critical value: " .. criticalValue)
+        end
+    end
+    
+    if string.match(str, vulnerabilityPatterns.encodingPatterns.base64) and #str > 8 then
         local success, decoded = pcall(function()
             return HttpService:Base64Decode(str)
         end)
@@ -65,25 +96,23 @@ local function analyzeStringWithAI(str)
         if success then
             analysis.isEncoded = true
             analysis.encodingType = "Base64"
-            analysis.suspiciousScore = analysis.suspiciousScore + 40
+            analysis.vulnerabilityScore = analysis.vulnerabilityScore + 30
             
-            -- Tentar JSON decode
             local jsonSuccess, jsonDecoded = pcall(function()
                 return HttpService:JSONDecode(decoded)
             end)
             
             if jsonSuccess then
                 analysis.decodedValue = jsonDecoded
-                analysis.suspiciousScore = analysis.suspiciousScore + 60
+                analysis.vulnerabilityScore = analysis.vulnerabilityScore + 40
             else
                 analysis.decodedValue = decoded
-                analysis.suspiciousScore = analysis.suspiciousScore + 50
+                analysis.vulnerabilityScore = analysis.vulnerabilityScore + 30
             end
         end
     end
     
-    -- Detectar Hex
-    if string.match(str, aiPatterns.encodings.hex) and #str > 6 and #str % 2 == 0 then
+    if string.match(str, vulnerabilityPatterns.encodingPatterns.hex) and #str > 6 and #str % 2 == 0 then
         local success, decoded = pcall(function()
             local result = ""
             for i = 1, #str, 2 do
@@ -100,82 +129,97 @@ local function analyzeStringWithAI(str)
             analysis.isEncoded = true
             analysis.encodingType = "Hex"
             analysis.decodedValue = decoded
-            analysis.suspiciousScore = analysis.suspiciousScore + 35
+            analysis.vulnerabilityScore = analysis.vulnerabilityScore + 25
         end
     end
     
-    -- Detectar ROT13
-    if string.match(str, aiPatterns.encodings.rot13) and #str > 3 then
+    if string.match(str, vulnerabilityPatterns.encodingPatterns.rot13) and #str > 3 then
         local decoded = string.gsub(str, "[A-Za-z]", function(c)
             local byte = string.byte(c)
-            if byte >= 65 and byte <= 90 then -- A-Z
+            if byte >= 65 and byte <= 90 then
                 return string.char(((byte - 65 + 13) % 26) + 65)
-            elseif byte >= 97 and byte <= 122 then -- a-z
+            elseif byte >= 97 and byte <= 122 then
                 return string.char(((byte - 97 + 13) % 26) + 97)
             end
             return c
         end)
         
         if decoded ~= str then
-            -- Verificar se o resultado faz sentido
-            local hasMeaningfulContent = false
-            for _, keyword in ipairs(aiPatterns.criticalKeywords) do
-                if string.find(string.lower(decoded), keyword) then
-                    hasMeaningfulContent = true
+            local hasCriticalContent = false
+            for _, criticalValue in ipairs(vulnerabilityPatterns.criticalValues) do
+                if string.find(string.lower(decoded), criticalValue) then
+                    hasCriticalContent = true
                     break
                 end
             end
             
-            if hasMeaningfulContent or #decoded > 4 then
+            if hasCriticalContent or #decoded > 4 then
                 analysis.isEncoded = true
                 analysis.encodingType = "ROT13"
                 analysis.decodedValue = decoded
-                analysis.suspiciousScore = analysis.suspiciousScore + 25
+                analysis.vulnerabilityScore = analysis.vulnerabilityScore + 20
             end
         end
     end
     
-    -- Detectar palavras críticas
-    local lowerStr = string.lower(str)
-    for _, keyword in ipairs(aiPatterns.criticalKeywords) do
-        if string.find(lowerStr, keyword) then
-            table.insert(analysis.patterns, "Critical keyword: " .. keyword)
-            analysis.suspiciousScore = analysis.suspiciousScore + 20
+    if string.match(str, vulnerabilityPatterns.encodingPatterns.reversed) and #str > 3 then
+        local reversed = string.reverse(str)
+        local hasCriticalContent = false
+        for _, criticalValue in ipairs(vulnerabilityPatterns.criticalValues) do
+            if string.find(string.lower(reversed), criticalValue) then
+                hasCriticalContent = true
+                break
+            end
         end
-    end
-    
-    -- Detectar padrões suspeitos
-    if string.find(lowerStr, "hack") or string.find(lowerStr, "cheat") or 
-       string.find(lowerStr, "exploit") or string.find(lowerStr, "bypass") then
-        analysis.suspiciousScore = analysis.suspiciousScore + 30
+        
+        if hasCriticalContent then
+            analysis.isEncoded = true
+            analysis.encodingType = "Reversed"
+            analysis.decodedValue = reversed
+            analysis.vulnerabilityScore = analysis.vulnerabilityScore + 15
+        end
     end
     
     return analysis
 end
 
--- 🧠 AI CODE ANALYSIS - VERSÃO OTIMIZADA
-local function analyzeCodeWithAI(source)
+local function analyzeCodeForExploits(source)
     if not source or type(source) ~= "string" then return nil end
     
     local analysis = {
-        suspiciousFunctions = {},
-        suspiciousScore = 0
+        exploitFunctions = {},
+        weakValidations = {},
+        criticalOperations = {},
+        exploitScore = 0,
+        vulnerabilityLevel = "LOW"
     }
     
-    -- Detectar funções suspeitas
-    for _, funcName in ipairs(aiPatterns.suspiciousCode) do
+    for _, funcName in ipairs(vulnerabilityPatterns.exploitFunctions) do
         local count = select(2, string.gsub(source, funcName, ""))
         if count > 0 then
-            table.insert(analysis.suspiciousFunctions, {
+            table.insert(analysis.exploitFunctions, {
                 function = funcName,
                 count = count
             })
-            analysis.suspiciousScore = analysis.suspiciousScore + (count * 15)
+            analysis.exploitScore = analysis.exploitScore + (count * 20)
         end
     end
     
-    -- Detectar exploits específicos
-    local exploitPatterns = {
+    for _, pattern in ipairs(vulnerabilityPatterns.weakValidationPatterns) do
+        local matches = {}
+        for match in string.gmatch(source, pattern) do
+            table.insert(matches, match)
+        end
+        if #matches > 0 then
+            table.insert(analysis.weakValidations, {
+                pattern = pattern,
+                matches = matches
+            })
+            analysis.exploitScore = analysis.exploitScore + (#matches * 10)
+        end
+    end
+    
+    local criticalPatterns = {
         "game%.Players%.LocalPlayer",
         "game%.Players%.LocalPlayer%.Character",
         "game%.Players%.LocalPlayer%.Backpack",
@@ -183,326 +227,251 @@ local function analyzeCodeWithAI(source)
         "game%.Workspace",
         "game%.ReplicatedStorage",
         "game%.Lighting",
-        "Instance%.new",
-        "GetService",
-        "FireServer",
-        "InvokeServer"
+        "Humanoid%.Health",
+        "Humanoid%.MaxHealth",
+        "Humanoid%.WalkSpeed",
+        "Humanoid%.JumpPower",
+        "Humanoid%.JumpHeight"
     }
     
-    for _, pattern in ipairs(exploitPatterns) do
+    for _, pattern in ipairs(criticalPatterns) do
         local count = select(2, string.gsub(source, pattern, ""))
         if count > 0 then
-            analysis.suspiciousScore = analysis.suspiciousScore + (count * 25)
+            table.insert(analysis.criticalOperations, {
+                pattern = pattern,
+                count = count
+            })
+            analysis.exploitScore = analysis.exploitScore + (count * 30)
         end
+    end
+    
+    if analysis.exploitScore > 100 then
+        analysis.vulnerabilityLevel = "CRITICAL"
+    elseif analysis.exploitScore > 60 then
+        analysis.vulnerabilityLevel = "HIGH"
+    elseif analysis.exploitScore > 30 then
+        analysis.vulnerabilityLevel = "MEDIUM"
     end
     
     return analysis
 end
 
--- 🔍 ULTIMATE DEEP SCAN
-local function ultimateDeepScan()
-    findings = {}
-    encodedStrings = {}
+local function addCriticalFinding(category, severity, item, location, details, exploitScore)
+    table.insert(criticalFindings, {
+        category = category,
+        severity = severity,
+        item = item,
+        location = location,
+        details = details,
+        exploitScore = exploitScore or 0
+    })
+end
+
+local function scanForCriticalVulnerabilities()
+    criticalFindings = {}
+    exploitVectors = {}
     
-    print("🚀 Iniciando ULTIMATE VULNERABILITY SCANNER...")
-    initializeAIPatterns()
+    print("🔍 Iniciando CRITICAL VALUES SCANNER...")
+    initializeCriticalPatterns()
     
-    -- 1. SCAN REMOTES COM IA
-    print("🧠 Analisando RemoteEvents/Functions...")
-    local function scanRemotesWithAI(container, path)
+    local function scanRemotesForCritical(container, path)
         for _, obj in pairs(container:GetChildren()) do
             if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-                local nameAnalysis = analyzeStringWithAI(obj.Name)
+                local analysis = analyzeCriticalValue(obj.Name)
                 local severity = "INFO"
                 local details = "Remote encontrado"
+                local exploitScore = 0
                 
-                if nameAnalysis and nameAnalysis.isEncoded then
-                    severity = "CRITICAL"
-                    details = "Nome CODIFICADO detectado! (" .. nameAnalysis.encodingType .. ")"
-                    if nameAnalysis.decodedValue then
-                        details = details .. " Decodificado: " .. tostring(nameAnalysis.decodedValue)
+                if analysis and analysis.isCritical then
+                    if analysis.isEncoded then
+                        severity = "CRITICAL"
+                        details = "REMOTE CRÍTICO CODIFICADO! (" .. analysis.criticalType .. ")"
+                        if analysis.decodedValue then
+                            details = details .. " Decodificado: " .. tostring(analysis.decodedValue)
+                        end
+                        exploitScore = analysis.exploitPotential + 50
+                    elseif analysis.vulnerabilityScore > 40 then
+                        severity = "CRITICAL"
+                        details = "REMOTE CRÍTICO! (" .. analysis.criticalType .. ")"
+                        exploitScore = analysis.exploitPotential + 40
+                    elseif analysis.vulnerabilityScore > 25 then
+                        severity = "WARNING"
+                        details = "Remote suspeito (" .. analysis.criticalType .. ")"
+                        exploitScore = analysis.exploitPotential + 20
                     end
-                    table.insert(encodedStrings, {
-                        original = obj.Name,
-                        decoded = nameAnalysis.decodedValue,
-                        type = nameAnalysis.encodingType
+                    
+                    table.insert(exploitVectors, {
+                        type = "Remote",
+                        name = obj.Name,
+                        criticalType = analysis.criticalType,
+                        exploitScore = exploitScore,
+                        location = path
                     })
-                elseif nameAnalysis and nameAnalysis.suspiciousScore > 25 then
-                    severity = "WARNING"
-                    details = "Nome SUSPEITO detectado! Score: " .. nameAnalysis.suspiciousScore
-                elseif nameAnalysis and nameAnalysis.suspiciousScore > 15 then
-                    severity = "SUSPICIOUS"
-                    details = "Nome com padrões suspeitos. Score: " .. nameAnalysis.suspiciousScore
                 end
                 
-                addFinding("RemoteEvent", severity, obj.Name, path, details)
+                addCriticalFinding("Critical Remote", severity, obj.Name, path, details, exploitScore)
             end
             
             if #obj:GetChildren() > 0 then
-                scanRemotesWithAI(obj, path .. "/" .. obj.Name)
+                scanRemotesForCritical(obj, path .. "/" .. obj.Name)
             end
         end
     end
     
-    scanRemotesWithAI(ReplicatedStorage, "ReplicatedStorage")
-    scanRemotesWithAI(Workspace, "Workspace")
+    scanRemotesForCritical(ReplicatedStorage, "ReplicatedStorage")
+    scanRemotesForCritical(Workspace, "Workspace")
     
-    -- 2. SCAN VALUES COM IA
-    print("🧠 Analisando Values...")
-    local function scanValuesWithAI(container, path)
+    local function scanValuesForCritical(container, path)
         for _, obj in pairs(container:GetChildren()) do
             if obj:IsA("IntValue") or obj:IsA("StringValue") or obj:IsA("NumberValue") or 
                obj:IsA("BoolValue") or obj:IsA("ObjectValue") then
                 
-                local nameAnalysis = analyzeStringWithAI(obj.Name)
+                local nameAnalysis = analyzeCriticalValue(obj.Name)
                 local valueAnalysis = nil
                 
                 if obj:IsA("StringValue") then
-                    valueAnalysis = analyzeStringWithAI(obj.Value)
+                    valueAnalysis = analyzeCriticalValue(obj.Value)
                 end
                 
                 local severity = "INFO"
                 local details = "Value encontrado"
+                local exploitScore = 0
                 
-                if nameAnalysis and nameAnalysis.isEncoded then
-                    severity = "CRITICAL"
-                    details = "Nome CODIFICADO! (" .. nameAnalysis.encodingType .. ")"
-                    if nameAnalysis.decodedValue then
-                        details = details .. " Decodificado: " .. tostring(nameAnalysis.decodedValue)
+                if nameAnalysis and nameAnalysis.isCritical then
+                    if nameAnalysis.isEncoded then
+                        severity = "CRITICAL"
+                        details = "VALUE CRÍTICO CODIFICADO! (" .. nameAnalysis.criticalType .. ")"
+                        if nameAnalysis.decodedValue then
+                            details = details .. " Decodificado: " .. tostring(nameAnalysis.decodedValue)
+                        end
+                        exploitScore = nameAnalysis.exploitPotential + 45
+                    elseif nameAnalysis.vulnerabilityScore > 35 then
+                        severity = "CRITICAL"
+                        details = "VALUE CRÍTICO! (" .. nameAnalysis.criticalType .. ")"
+                        exploitScore = nameAnalysis.exploitPotential + 35
+                    elseif nameAnalysis.vulnerabilityScore > 20 then
+                        severity = "WARNING"
+                        details = "Value suspeito (" .. nameAnalysis.criticalType .. ")"
+                        exploitScore = nameAnalysis.exploitPotential + 15
                     end
-                elseif valueAnalysis and valueAnalysis.isEncoded then
-                    severity = "CRITICAL"
-                    details = "Valor CODIFICADO! (" .. valueAnalysis.encodingType .. ")"
-                    if valueAnalysis.decodedValue then
-                        details = details .. " Decodificado: " .. tostring(valueAnalysis.decodedValue)
+                    
+                    table.insert(exploitVectors, {
+                        type = "Value",
+                        name = obj.Name,
+                        criticalType = nameAnalysis.criticalType,
+                        exploitScore = exploitScore,
+                        location = path
+                    })
+                elseif valueAnalysis and valueAnalysis.isCritical then
+                    if valueAnalysis.isEncoded then
+                        severity = "CRITICAL"
+                        details = "VALOR CRÍTICO CODIFICADO! (" .. valueAnalysis.criticalType .. ")"
+                        if valueAnalysis.decodedValue then
+                            details = details .. " Decodificado: " .. tostring(valueAnalysis.decodedValue)
+                        end
+                        exploitScore = valueAnalysis.exploitPotential + 45
+                    elseif valueAnalysis.vulnerabilityScore > 35 then
+                        severity = "CRITICAL"
+                        details = "VALOR CRÍTICO! (" .. valueAnalysis.criticalType .. ")"
+                        exploitScore = valueAnalysis.exploitPotential + 35
                     end
-                elseif (nameAnalysis and nameAnalysis.suspiciousScore > 20) or 
-                       (valueAnalysis and valueAnalysis.suspiciousScore > 20) then
-                    severity = "WARNING"
-                    details = "Conteúdo SUSPEITO detectado!"
-                elseif (nameAnalysis and nameAnalysis.suspiciousScore > 10) or 
-                       (valueAnalysis and valueAnalysis.suspiciousScore > 10) then
-                    severity = "SUSPICIOUS"
-                    details = "Conteúdo com padrões suspeitos."
                 end
                 
-                addFinding("Value", severity, obj.Name .. " (" .. obj.ClassName .. ")", path, details)
+                addCriticalFinding("Critical Value", severity, obj.Name .. " (" .. obj.ClassName .. ")", path, details, exploitScore)
             end
             
             if #obj:GetChildren() > 0 then
-                scanValuesWithAI(obj, path .. "/" .. obj.Name)
+                scanValuesForCritical(obj, path .. "/" .. obj.Name)
             end
         end
     end
     
-    scanValuesWithAI(ReplicatedStorage, "ReplicatedStorage")
-    scanValuesWithAI(Workspace, "Workspace")
+    scanValuesForCritical(ReplicatedStorage, "ReplicatedStorage")
+    scanValuesForCritical(Workspace, "Workspace")
     
-    -- 3. SCAN SCRIPTS COM IA
-    print("🧠 Analisando Scripts...")
-    local function scanScriptsWithAI(container, path)
+    local function scanScriptsForCritical(container, path)
         for _, obj in pairs(container:GetChildren()) do
             if obj:IsA("LocalScript") or obj:IsA("ModuleScript") or obj:IsA("Script") then
-                local nameAnalysis = analyzeStringWithAI(obj.Name)
+                local nameAnalysis = analyzeCriticalValue(obj.Name)
                 local severity = "INFO"
                 local details = "Script encontrado"
+                local exploitScore = 0
                 
-                if nameAnalysis and nameAnalysis.isEncoded then
-                    severity = "CRITICAL"
-                    details = "Script com nome CODIFICADO! (" .. nameAnalysis.encodingType .. ")"
-                elseif nameAnalysis and nameAnalysis.suspiciousScore > 15 then
-                    severity = "WARNING"
-                    details = "Script com nome SUSPEITO!"
-                elseif nameAnalysis and nameAnalysis.suspiciousScore > 8 then
-                    severity = "SUSPICIOUS"
-                    details = "Script com padrões suspeitos."
+                if nameAnalysis and nameAnalysis.isCritical then
+                    if nameAnalysis.isEncoded then
+                        severity = "CRITICAL"
+                        details = "SCRIPT CRÍTICO CODIFICADO! (" .. nameAnalysis.criticalType .. ")"
+                        exploitScore = nameAnalysis.exploitPotential + 40
+                    elseif nameAnalysis.vulnerabilityScore > 30 then
+                        severity = "WARNING"
+                        details = "Script suspeito (" .. nameAnalysis.criticalType .. ")"
+                        exploitScore = nameAnalysis.exploitPotential + 25
+                    end
                 end
                 
-                -- Tentar analisar o código fonte
                 local success, source = pcall(function()
                     return obj.Source
                 end)
                 
                 if success and source and source ~= "" then
-                    local codeAnalysis = analyzeCodeWithAI(source)
-                    if codeAnalysis and codeAnalysis.suspiciousScore > 60 then
+                    local codeAnalysis = analyzeCodeForExploits(source)
+                    if codeAnalysis and codeAnalysis.vulnerabilityLevel == "CRITICAL" then
                         severity = "CRITICAL"
-                        details = "CÓDIGO SUSPEITO detectado! Score: " .. codeAnalysis.suspiciousScore
-                    elseif codeAnalysis and codeAnalysis.suspiciousScore > 30 then
+                        details = "CÓDIGO CRÍTICO detectado! Score: " .. codeAnalysis.exploitScore
+                        exploitScore = exploitScore + codeAnalysis.exploitScore
+                    elseif codeAnalysis and codeAnalysis.vulnerabilityLevel == "HIGH" then
                         severity = "WARNING"
-                        details = "Código com padrões suspeitos. Score: " .. codeAnalysis.suspiciousScore
-                    elseif codeAnalysis and codeAnalysis.suspiciousScore > 15 then
-                        severity = "SUSPICIOUS"
-                        details = "Código com alguns padrões suspeitos. Score: " .. codeAnalysis.suspiciousScore
+                        details = "Código com vulnerabilidades. Score: " .. codeAnalysis.exploitScore
+                        exploitScore = exploitScore + codeAnalysis.exploitScore
                     end
                 end
                 
-                addFinding("Script", severity, obj.Name, path, details)
+                addCriticalFinding("Critical Script", severity, obj.Name, path, details, exploitScore)
             end
             
             if #obj:GetChildren() > 0 then
-                scanScriptsWithAI(obj, path .. "/" .. obj.Name)
+                scanScriptsForCritical(obj, path .. "/" .. obj.Name)
             end
         end
     end
     
-    scanScriptsWithAI(game, "game")
+    scanScriptsForCritical(game, "game")
     
-    -- 4. SCAN VARIÁVEIS GLOBAIS
-    print("🧠 Analisando variáveis globais...")
     local globalCount = 0
     for k, v in pairs(_G) do
         globalCount = globalCount + 1
-        if globalCount > 100 then break end
+        if globalCount > 80 then break end
         
         local keyStr = tostring(k)
         local valueType = type(v)
-        local keyAnalysis = analyzeStringWithAI(keyStr)
+        local keyAnalysis = analyzeCriticalValue(keyStr)
         
         local severity = "INFO"
         local details = "Variável global: " .. valueType
+        local exploitScore = 0
         
-        if keyAnalysis and keyAnalysis.isEncoded then
-            severity = "CRITICAL"
-            details = "Variável global CODIFICADA! (" .. keyAnalysis.encodingType .. ")"
-        elseif keyAnalysis and keyAnalysis.suspiciousScore > 15 then
-            severity = "WARNING"
-            details = "Variável global SUSPEITA!"
-        elseif keyAnalysis and keyAnalysis.suspiciousScore > 8 then
-            severity = "SUSPICIOUS"
-            details = "Variável global com padrões suspeitos."
+        if keyAnalysis and keyAnalysis.isCritical then
+            if keyAnalysis.isEncoded then
+                severity = "CRITICAL"
+                details = "VARIÁVEL CRÍTICA CODIFICADA! (" .. keyAnalysis.criticalType .. ")"
+                exploitScore = keyAnalysis.exploitPotential + 30
+            elseif keyAnalysis.vulnerabilityScore > 25 then
+                severity = "WARNING"
+                details = "Variável suspeita (" .. keyAnalysis.criticalType .. ")"
+                exploitScore = keyAnalysis.exploitPotential + 20
+            end
         end
         
-        addFinding("Global Variable", severity, keyStr .. " (" .. valueType .. ")", "_G", details)
+        addCriticalFinding("Critical Global", severity, keyStr .. " (" .. valueType .. ")", "_G", details, exploitScore)
     end
     
-    -- 5. VERIFICAR CONFIGURAÇÕES
-    print("🧠 Verificando configurações...")
-    addFinding("Security", Workspace.FilteringEnabled and "GOOD" or "CRITICAL", 
-              "FilteringEnabled: " .. tostring(Workspace.FilteringEnabled), "Workspace", 
-              Workspace.FilteringEnabled and "Segurança ativada" or "CRÍTICO: Sem proteção!")
-    
-    addFinding("Setting", "INFO", "StreamingEnabled: " .. tostring(Workspace.StreamingEnabled), 
-              "Workspace", "Configuração de streaming")
-    
-    local playersService = game:GetService("Players")
-    addFinding("Setting", "INFO", "CharacterAutoLoads: " .. tostring(playersService.CharacterAutoLoads), 
-              "Players", "Sistema de spawn automático")
-    
-    -- 6. ANÁLISE DE PADRÕES CODIFICADOS
-    if #encodedStrings > 0 then
-        addFinding("Encoded Pattern", "CRITICAL", 
-                  #encodedStrings .. " strings codificadas encontradas", "AI Analysis", 
-                  "Padrões de codificação detectados!")
-    end
-    
-    -- RESULTADOS
-    print("✅ ULTIMATE Deep Scan completo!")
+    print("✅ Critical Values Scan completo!")
     print("📊 ESTATÍSTICAS:")
-    print("   🔗 RemoteEvents/Functions analisados")
-    print("   📊 Values analisados")
-    print("   📜 Scripts analisados")
-    print("   🌐 Variáveis globais analisadas")
-    print("   🔐 Strings codificadas: " .. #encodedStrings)
-    print("   🚨 Total de itens: " .. #findings)
+    print("   🔗 Remotes críticos analisados")
+    print("   📊 Values críticos analisados")
+    print("   📜 Scripts críticos analisados")
+    print("   🌐 Variáveis críticas analisadas")
+    print("   🚨 Total de vulnerabilidades: " .. #criticalFindings)
+    print("   ⚡ Vetores de exploit: " .. #exploitVectors)
     
-    return findings, encodedStrings
-end
-
--- Função para adicionar descoberta
-local function addFinding(category, severity, item, location, details)
-    table.insert(findings, {
-        category = category,
-        severity = severity,
-        item = item,
-        location = location,
-        details = details
-    })
-end
-
--- 🎨 INTERFACE SIMPLIFICADA
-local function createSimpleGUI(items, encodedStrings)
-    local gui = Instance.new("ScreenGui")
-    gui.Name = "UltimateScanResults"
-    gui.Parent = playerGui
-    
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 600, 0, 500)
-    frame.Position = UDim2.new(0.5, -300, 0.5, -250)
-    frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-    frame.BorderSizePixel = 2
-    frame.BorderColor3 = Color3.fromRGB(255, 100, 100)
-    frame.Parent = gui
-    
-    -- Título
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 0, 50)
-    title.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    title.BorderSizePixel = 0
-    title.Text = "🚀 ULTIMATE SCANNER - " .. #items .. " itens"
-    title.TextColor3 = Color3.fromRGB(255, 100, 100)
-    title.TextSize = 18
-    title.Font = Enum.Font.SourceSansBold
-    title.Parent = frame
-    
-    -- Lista com scroll
-    local scroll = Instance.new("ScrollingFrame")
-    scroll.Size = UDim2.new(1, -10, 1, -100)
-    scroll.Position = UDim2.new(0, 5, 0, 55)
-    scroll.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    scroll.BorderSizePixel = 1
-    scroll.BorderColor3 = Color3.fromRGB(80, 80, 80)
-    scroll.ScrollBarThickness = 8
-    scroll.Parent = frame
-    
-    -- Categorizar itens
-    local categories = {}
-    for _, item in ipairs(items) do
-        if not categories[item.category] then
-            categories[item.category] = {}
-        end
-        table.insert(categories[item.category], item)
-    end
-    
-    local yPos = 5
-    
-    -- Seção de strings codificadas
-    if #encodedStrings > 0 then
-        local encodedHeader = Instance.new("TextLabel")
-        encodedHeader.Size = UDim2.new(1, -10, 0, 30)
-        encodedHeader.Position = UDim2.new(0, 5, 0, yPos)
-        encodedHeader.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-        encodedHeader.BorderSizePixel = 0
-        encodedHeader.Text = "🔐 STRINGS CODIFICADAS (" .. #encodedStrings .. ")"
-        encodedHeader.TextColor3 = Color3.fromRGB(255, 255, 255)
-        encodedHeader.TextSize = 14
-        encodedHeader.Font = Enum.Font.SourceSansBold
-        encodedHeader.TextXAlignment = Enum.TextXAlignment.Left
-        encodedHeader.Parent = scroll
-        
-        yPos = yPos + 35
-        
-        for _, encoded in ipairs(encodedStrings) do
-            local encodedLabel = Instance.new("TextLabel")
-            encodedLabel.Size = UDim2.new(1, -20, 0, 25)
-            encodedLabel.Position = UDim2.new(0, 15, 0, yPos)
-            encodedLabel.BackgroundTransparency = 1
-            encodedLabel.Text = "🔓 " .. encoded.original .. " → " .. tostring(encoded.decoded) .. " (" .. encoded.type .. ")"
-            encodedLabel.TextColor3 = Color3.fromRGB(255, 200, 200)
-            encodedLabel.TextSize = 12
-            encodedLabel.Font = Enum.Font.SourceSans
-            encodedLabel.TextXAlignment = Enum.TextXAlignment.Left
-            encodedLabel.Parent = scroll
-            
-            yPos = yPos + 27
-        end
-        
-        yPos = yPos + 10
-    end
-    
-    -- Categorias normais
-    for category, categoryItems in pairs(categories) do
-        -- Cabeçalho da categoria
-        local categoryHeader = Instance.new("TextLabel")
-        categoryHeader.Size = UDim2.new(1, -10, 0, 30)
-        categoryHeader.Position = UDim2.new(0, 5, 0
+  
