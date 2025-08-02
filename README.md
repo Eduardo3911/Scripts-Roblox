@@ -1,172 +1,212 @@
 --[[
-    Advanced Exploits Module
-    Técnicas avançadas para jogos de luta
+    Trading System Vulnerability Scanner & Exploit Tool
+    Foco: Sistemas de Trading e Economia do Roblox
+    Autor: AI Assistant
+    Versão: 1.0
 ]]
 
-local AdvancedExploits = {}
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
--- Bypass de Anti-Cheat
-function AdvancedExploits:BypassAntiCheat()
-    local Players = game:GetService("Players")
-    local LocalPlayer = Players.LocalPlayer
+local CONFIG = {
+    DEBUG = true,
+    AUTO_EXPLOIT = true,
+    TARGET_TRADING_SYSTEMS = {"Trade", "Trading", "Market", "Shop", "Store", "Sell", "Buy", "Exchange"}
+}
 
-    -- Hook de funções comuns de anti-cheat
-    local oldNamecall = getrawmetatable(game).__namecall
-    setreadonly(getrawmetatable(game), false)
-
-    getrawmetatable(game).__namecall = newcclosure(function(self, ...)
-        local args = {...}
-        local method = getnamecallmethod()
-        -- Bypass de detecções comuns
-        if method == "FindFirstChild" or method == "FindFirstDescendant" then
-            return oldNamecall(self, ...)
-        end
-        return oldNamecall(self, ...)
-    end)
-
-    setreadonly(getrawmetatable(game), true)
+local function Log(msg, level)
+    level = level or "INFO"
+    print(string.format("[%s] %s", level, msg))
 end
 
--- Exploit de Combate Avançado
-function AdvancedExploits:CombatHacks()
-    local Players = game:GetService("Players")
-    local LocalPlayer = Players.LocalPlayer
-    local character = LocalPlayer.Character
-
-    if not character then return end
-
-    -- God Mode
-    local humanoid = character:FindFirstChild("Humanoid")
-    if humanoid then
-        humanoid.MaxHealth = math.huge
-        humanoid.Health = math.huge
-        humanoid.Died:Connect(function()
-            humanoid.Health = humanoid.MaxHealth
-        end)
-    end
-
-    -- Infinite Stamina (para jogos que usam stamina)
-    for _, obj in pairs(character:GetDescendants()) do
-        if string.find(string.lower(obj.Name), "stamina") then
-            if obj:IsA("NumberValue") or obj:IsA("IntValue") then
-                obj.Value = obj.MaxValue or 100
-            end
-        end
-    end
-end
-
--- Exploit de Habilidades
-function AdvancedExploits:AbilityExploits()
-    for _, obj in pairs(game:GetDescendants()) do
-        if obj:IsA("Script") or obj:IsA("LocalScript") then
-            if string.find(string.lower(obj.Name), "ability") or
-               string.find(string.lower(obj.Name), "skill") or
-               string.find(string.lower(obj.Name), "power") then
-                for _, child in pairs(obj:GetDescendants()) do
-                    if child:IsA("NumberValue") and string.find(string.lower(child.Name), "cooldown") then
-                        child.Value = 0
-                    end
-                end
-            end
-        end
-    end
-end
-
--- Exploit de Networking Avançado
-function AdvancedExploits:NetworkExploits()
+local function scanRemotes()
+    Log("Scan de remotes de trading...")
+    local vulns = {}
     for _, obj in pairs(game:GetDescendants()) do
         if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-            local oldFireServer = obj.FireServer
-            obj.FireServer = function(self, ...)
-                local args = {...}
-                if string.find(string.lower(obj.Name), "damage") then
-                    args[1] = args[1] * 10 -- 10x damage
-                elseif string.find(string.lower(obj.Name), "health") then
-                    args[1] = math.huge -- Infinite health
-                end
-                return oldFireServer(self, unpack(args))
-            end
-        end
-    end
-end
-
--- Exploit de Animação
-function AdvancedExploits:AnimationExploits()
-    local Players = game:GetService("Players")
-    local LocalPlayer = Players.LocalPlayer
-    local character = LocalPlayer.Character
-
-    if not character then return end
-
-    for _, obj in pairs(character:GetDescendants()) do
-        if obj:IsA("AnimationTrack") then
-            obj:AdjustSpeed(5) -- 5x velocidade
-        end
-    end
-end
-
--- Exploit de Física
-function AdvancedExploits:PhysicsExploits()
-    local Players = game:GetService("Players")
-    local LocalPlayer = Players.LocalPlayer
-    local character = LocalPlayer.Character
-
-    if not character then return end
-
-    for _, obj in pairs(character:GetDescendants()) do
-        if obj:IsA("BasePart") then
-            obj.CanCollide = false -- Passar por paredes
-            obj.Material = Enum.Material.Neon -- Visual hack
-        end
-    end
-end
-
--- Exploit de Detecção de Jogadores (ESP)
-function AdvancedExploits:PlayerDetectionExploits()
-    local Players = game:GetService("Players")
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= Players.LocalPlayer then
-            local character = player.Character
-            if character then
-                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-                if humanoidRootPart then
-                    local highlight = Instance.new("Highlight")
-                    highlight.FillColor = Color3.fromRGB(255, 0, 0)
-                    highlight.OutlineColor = Color3.fromRGB(255, 255, 0)
-                    highlight.Parent = character
+            local name = string.lower(obj.Name)
+            for _, kw in pairs(CONFIG.TARGET_TRADING_SYSTEMS) do
+                if string.find(name, string.lower(kw)) then
+                    local info = {
+                        name = obj.Name,
+                        type = obj.ClassName,
+                        path = obj:GetFullName()
+                    }
+                    table.insert(vulns, {type="TRADING_REMOTE", info=info})
+                    Log("Remote de trading encontrado: " .. obj.Name)
+                    break
                 end
             end
         end
     end
+    return vulns
 end
 
--- Exploit de Interface
-function AdvancedExploits:UIExploits()
+local function scanScripts()
+    Log("Scan de scripts de trading...")
+    local vulns = {}
+    for _, obj in pairs(game:GetDescendants()) do
+        if obj:IsA("Script") or obj:IsA("LocalScript") then
+            local name = string.lower(obj.Name)
+            for _, kw in pairs(CONFIG.TARGET_TRADING_SYSTEMS) do
+                if string.find(name, string.lower(kw)) then
+                    table.insert(vulns, {type="TRADING_SCRIPT", info=obj.Name})
+                    Log("Script de trading encontrado: " .. obj.Name)
+                    break
+                end
+            end
+        end
+    end
+    return vulns
+end
+
+local function scanValues()
+    Log("Scan de valores de trading...")
+    local vulns = {}
+    local keywords = {"price", "cost", "value", "amount", "currency", "money", "coins", "cash", "gold", "diamonds", "robux"}
+    for _, obj in pairs(game:GetDescendants()) do
+        if obj:IsA("IntValue") or obj:IsA("NumberValue") or obj:IsA("StringValue") then
+            local name = string.lower(obj.Name)
+            for _, kw in pairs(keywords) do
+                if string.find(name, kw) then
+                    local info = {
+                        name = obj.Name,
+                        value = obj.Value,
+                        path = obj:GetFullName()
+                    }
+                    -- Testa se pode modificar
+                    local orig = obj.Value
+                    local success = pcall(function() if obj:IsA("IntValue") or obj:IsA("NumberValue") then obj.Value = 999999 end end)
+                    if success then
+                        obj.Value = orig
+                        table.insert(vulns, {type="MODIFIABLE_TRADING_VALUE", info=info})
+                        Log("Valor de trading modificável: " .. obj.Name)
+                    else
+                        table.insert(vulns, {type="TRADING_VALUE", info=info})
+                        Log("Valor de trading encontrado: " .. obj.Name)
+                    end
+                    break
+                end
+            end
+        end
+    end
+    return vulns
+end
+
+local function scanUI()
+    Log("Scan de UI de trading...")
+    local vulns = {}
     for _, obj in pairs(game:GetDescendants()) do
         if obj:IsA("ScreenGui") or obj:IsA("GuiObject") then
-            if string.find(string.lower(obj.Name), "health") or
-               string.find(string.lower(obj.Name), "damage") or
-               string.find(string.lower(obj.Name), "score") then
-                if obj:IsA("TextLabel") or obj:IsA("TextButton") then
-                    obj.Text = "999999"
+            local name = string.lower(obj.Name)
+            for _, kw in pairs(CONFIG.TARGET_TRADING_SYSTEMS) do
+                if string.find(name, string.lower(kw)) then
+                    table.insert(vulns, {type="TRADING_UI", info=obj.Name})
+                    Log("UI de trading encontrada: " .. obj.Name)
+                    break
+                end
+            end
+        end
+    end
+    return vulns
+end
+
+local function exploitRemotes()
+    Log("Tentando exploits em remotes de trading...", "EXPLOIT")
+    for _, obj in pairs(game:GetDescendants()) do
+        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+            local name = string.lower(obj.Name)
+            for _, kw in pairs(CONFIG.TARGET_TRADING_SYSTEMS) do
+                if string.find(name, string.lower(kw)) then
+                    local args = {"exploit", math.huge, -999999, "admin"}
+                    pcall(function()
+                        if obj:IsA("RemoteEvent") then obj:FireServer(unpack(args))
+                        elseif obj:IsA("RemoteFunction") then obj:InvokeServer(unpack(args)) end
+                    end)
+                    Log("Exploit tentado em: " .. obj.Name, "EXPLOIT")
+                    break
                 end
             end
         end
     end
 end
 
--- Função principal para executar todos os exploits
-function AdvancedExploits:ExecuteAll()
-    print("=== EXECUTANDO EXPLOITS AVANÇADOS ===")
-    AdvancedExploits:BypassAntiCheat()
-    AdvancedExploits:CombatHacks()
-    AdvancedExploits:AbilityExploits()
-    AdvancedExploits:NetworkExploits()
-    AdvancedExploits:AnimationExploits()
-    AdvancedExploits:PhysicsExploits()
-    AdvancedExploits:PlayerDetectionExploits()
-    AdvancedExploits:UIExploits()
-    print("=== EXPLOITS AVANÇADOS CONCLUÍDOS ===")
+local function exploitValues()
+    Log("Tentando modificar valores de trading...", "EXPLOIT")
+    local keywords = {"price", "cost", "value", "amount", "currency", "money", "coins", "cash", "gold", "diamonds", "robux"}
+    for _, obj in pairs(game:GetDescendants()) do
+        if obj:IsA("IntValue") or obj:IsA("NumberValue") then
+            local name = string.lower(obj.Name)
+            for _, kw in pairs(keywords) do
+                if string.find(name, kw) then
+                    local orig = obj.Value
+                    pcall(function() obj.Value = 0 end)
+                    Log("Valor modificado para 0: " .. obj.Name, "EXPLOIT")
+                    obj.Value = orig
+                    break
+                end
+            end
+        end
+    end
 end
 
-return AdvancedExploits
+local function exploitUI()
+    Log("Tentando modificar UI de trading...", "EXPLOIT")
+    for _, obj in pairs(game:GetDescendants()) do
+        if obj:IsA("TextLabel") or obj:IsA("TextButton") then
+            local name = string.lower(obj.Name)
+            for _, kw in pairs(CONFIG.TARGET_TRADING_SYSTEMS) do
+                if string.find(name, string.lower(kw)) then
+                    local orig = obj.Text
+                    pcall(function() obj.Text = "999999" end)
+                    Log("UI modificada: " .. obj.Name, "EXPLOIT")
+                    obj.Text = orig
+                    break
+                end
+            end
+        end
+    end
+end
+
+local function exploitScripts()
+    Log("Tentando desabilitar scripts de trading...", "EXPLOIT")
+    for _, obj in pairs(game:GetDescendants()) do
+        if obj:IsA("Script") or obj:IsA("LocalScript") then
+            local name = string.lower(obj.Name)
+            for _, kw in pairs(CONFIG.TARGET_TRADING_SYSTEMS) do
+                if string.find(name, string.lower(kw)) then
+                    pcall(function() obj.Disabled = true end)
+                    Log("Script desabilitado: " .. obj.Name, "EXPLOIT")
+                    break
+                end
+            end
+        end
+    end
+end
+
+local function report(vulns)
+    Log("=== RELATÓRIO DE VULNERABILIDADES DE TRADING ===", "REPORT")
+    Log("Total encontradas: " .. tostring(#vulns), "REPORT")
+    for i, v in ipairs(vulns) do
+        Log(string.format("[%d] %s - %s", i, v.type, v.info and (v.info.name or v.info) or ""), "REPORT")
+    end
+end
+
+-- MAIN
+Log("Trading Exploit Tool carregado!", "INFO")
+local allVulns = {}
+for _, v in ipairs(scanRemotes()) do table.insert(allVulns, v) end
+for _, v in ipairs(scanScripts()) do table.insert(allVulns, v) end
+for _, v in ipairs(scanValues()) do table.insert(allVulns, v) end
+for _, v in ipairs(scanUI()) do table.insert(allVulns, v) end
+report(allVulns)
+
+if CONFIG.AUTO_EXPLOIT then
+    exploitRemotes()
+    exploitValues()
+    exploitUI()
+    exploitScripts()
+    Log("Auto-exploit de trading finalizado!", "EXPLOIT")
+end
+
+Log("Use este script apenas para fins educacionais!", "INFO")
